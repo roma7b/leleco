@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { PaymentStatus, Student } from '../types';
@@ -217,7 +216,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                 <ChevronRight size={16} className="text-slate-600 group-hover:text-primary transform group-hover:translate-x-1 transition-all" />
               </div>
             </div>
-          )}})}
+            );
+          })}
         </div>
       )}
 
