@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit } from 'lucide-react';
+import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit, Lock } from 'lucide-react';
 import { PaymentStatus, Student } from '../types';
 import { useToast } from './ToastContext';
 
@@ -22,6 +22,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
   const [newStudentData, setNewStudentData] = useState({
     name: '',
     email: '',
+    password: '',
     goal: 'Hipertrofia',
     status: PaymentStatus.PAID
   });
@@ -62,7 +63,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
   // Abrir modal para NOVO aluno
   const handleOpenNewStudent = () => {
     setEditingStudentId(null);
-    setNewStudentData({ name: '', email: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
     setIsModalOpen(true);
   };
 
@@ -75,6 +76,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     setNewStudentData({
       name: student.name,
       email: student.email || '',
+      password: '', // Senha começa vazia na edição (só preenche se quiser trocar)
       goal: student.goal,
       status: student.status
     });
@@ -86,6 +88,12 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     e.preventDefault();
     if (!newStudentData.name) return;
 
+    // Validação básica de senha na criação
+    if (!editingStudentId && !newStudentData.password) {
+        showToast('Defina uma senha inicial para o aluno.', 'error');
+        return;
+    }
+
     if (editingStudentId) {
       // MODO EDIÇÃO
       const studentToUpdate = students.find(s => s.id === editingStudentId);
@@ -96,7 +104,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
           email: newStudentData.email,
           goal: newStudentData.goal,
           status: newStudentData.status,
-          // Mantém avatar e ID originais
+          // Se o campo senha não estiver vazio, atualiza. Se estiver vazio, mantém a antiga (handled by db service)
+          password: newStudentData.password ? newStudentData.password : undefined
         };
         onUpdateStudent(updatedStudent);
         showToast(`Dados de ${newStudentData.name} atualizados!`, 'success');
@@ -107,6 +116,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
         id: crypto.randomUUID(),
         name: newStudentData.name,
         email: newStudentData.email,
+        password: newStudentData.password,
         goal: newStudentData.goal,
         status: newStudentData.status,
         lastPaymentDate: new Date().toISOString(),
@@ -117,7 +127,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     }
 
     setIsModalOpen(false);
-    setNewStudentData({ name: '', email: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
     setEditingStudentId(null);
   };
 
@@ -218,7 +228,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                         onClick={(e) => handleOpenEditStudent(e, student)}
                         className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors border-b border-slate-800"
                       >
-                        <Edit size={16} className="text-blue-400" /> Editar Dados
+                        <Edit size={16} className="text-blue-400" /> Editar / Senha
                       </button>
 
                       <div className="p-2 text-xs text-slate-500 uppercase font-bold border-b border-slate-800 bg-slate-950/50">
@@ -319,6 +329,23 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                     placeholder="joao@email.com"
                   />
                   <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">
+                    {editingStudentId ? "Alterar Senha (Opcional)" : "Senha de Acesso"}
+                </label>
+                <div className="relative">
+                  <input 
+                    type="text"
+                    value={newStudentData.password}
+                    onChange={(e) => setNewStudentData({...newStudentData, password: e.target.value})}
+                    className="w-full bg-slate-900 border border-slate-700 text-white p-3 pl-10 rounded-lg focus:border-primary outline-none transition-colors"
+                    placeholder={editingStudentId ? "Deixe em branco para manter a atual" : "Crie uma senha"}
+                    required={!editingStudentId} // Obrigatório apenas na criação
+                  />
+                  <Lock className="absolute left-3 top-3.5 text-slate-500" size={18} />
                 </div>
               </div>
 

@@ -24,6 +24,7 @@ export const fetchStudents = async (): Promise<Student[]> => {
     status: s.status as PaymentStatus,
     goal: s.goal,
     lastPaymentDate: s.last_payment_date,
+    password: s.password, // Recuperando a senha para verificação de login
   }));
 };
 
@@ -38,6 +39,7 @@ export const createStudent = async (student: Student): Promise<Student | null> =
         status: student.status,
         goal: student.goal,
         last_payment_date: student.lastPaymentDate,
+        password: student.password, // Salvando a senha
       },
     ])
     .select()
@@ -55,13 +57,23 @@ export const createStudent = async (student: Student): Promise<Student | null> =
 };
 
 export const updateStudent = async (student: Student): Promise<boolean> => {
+  // Prepara o objeto de atualização
+  const updateData: any = {
+      status: student.status,
+      goal: student.goal,
+      last_payment_date: student.lastPaymentDate,
+      name: student.name,
+      email: student.email
+  };
+
+  // Só atualiza a senha se ela foi fornecida (string não vazia)
+  if (student.password && student.password.trim() !== '') {
+      updateData.password = student.password;
+  }
+
   const { error } = await supabase
     .from('students')
-    .update({
-        status: student.status,
-        goal: student.goal,
-        last_payment_date: student.lastPaymentDate
-    })
+    .update(updateData)
     .eq('id', student.id);
 
   if (error) {

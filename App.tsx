@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -56,13 +55,10 @@ const AppContent = () => {
 
   // Handle Add Student (Supabase)
   const handleAddStudent = async (newStudent: Student) => {
-    // UI Optimistic Update (mostra antes de salvar para parecer rápido)
-    // Mas aqui vamos esperar para garantir o ID correto
     const savedStudent = await createStudent(newStudent);
     
     if (savedStudent) {
         setStudents(prev => [...prev, savedStudent]);
-        // O Toast já é chamado dentro do StudentList, mas podemos reforçar ou remover de lá
     } else {
         showToast('Erro ao salvar aluno no banco de dados.', 'error');
     }
@@ -78,50 +74,54 @@ const AppContent = () => {
     const success = await updateStudent(updatedStudent);
     if (!success) {
         showToast('Erro ao sincronizar alteração.', 'error');
-        // Reverteria aqui em um app complexo
     }
   };
 
   // Handle Login
-  const handleLogin = async (email: string, role: UserRole) => {
-    // 1. Login do Treinador (Hardcoded/Simulado para o Admin)
+  const handleLogin = async (email: string, password: string, role: UserRole) => {
+    // 1. Login do Treinador
     if (role === 'TRAINER') {
-      // Em um app real, verificaria senha no Supabase Auth
-      setUser({
-        id: 'trainer-1',
-        name: 'Leleco Coradini',
-        email,
-        role: 'TRAINER',
-        avatarUrl: 'https://github.com/shadcn.png'
-      });
-      setActiveView('DASHBOARD');
+      if (email === 'lelecocoradini@personal.com' && password === 'titanfit2026') {
+        setUser({
+          id: 'trainer-1',
+          name: 'Leleco Coradini',
+          email,
+          role: 'TRAINER',
+          avatarUrl: 'https://github.com/shadcn.png'
+        });
+        setActiveView('DASHBOARD');
+        showToast('Login de Personal realizado com sucesso!', 'success');
+      } else {
+        showToast('Email ou senha de Personal incorretos.', 'error');
+      }
       return;
     } 
     
-    // 2. Login do Aluno (Verifica se existe na tabela 'students')
-    // Precisamos carregar os alunos primeiro para verificar, ou fazer uma query especifica
-    // Como ainda não carregamos o estado 'students', vamos fazer uma query direta rápida.
-    // Para simplificar, vamos carregar a lista e procurar.
-    
-    const allStudents = await fetchStudents(); // Busca rápida para login
+    // 2. Login do Aluno (Com verificação de senha do banco)
+    const allStudents = await fetchStudents();
     const foundStudent = allStudents.find(s => s.email === email);
 
     if (foundStudent) {
-        setUser({
-            id: `student-user-${foundStudent.id}`,
-            studentId: foundStudent.id,
-            name: foundStudent.name,
-            email,
-            role: 'STUDENT',
-            avatarUrl: foundStudent.avatarUrl
-        });
-        setStudents(allStudents); // Já aproveita e popula o estado
-        // Carregar treinos em background
-        fetchWorkouts().then(w => setWorkouts(w));
-        
-        setActiveView('DASHBOARD');
+        // Verifica se a senha bate com a do banco
+        if (foundStudent.password === password) {
+            setUser({
+                id: `student-user-${foundStudent.id}`,
+                studentId: foundStudent.id,
+                name: foundStudent.name,
+                email,
+                role: 'STUDENT',
+                avatarUrl: foundStudent.avatarUrl
+            });
+            setStudents(allStudents);
+            fetchWorkouts().then(w => setWorkouts(w));
+            
+            setActiveView('DASHBOARD');
+            showToast(`Bem-vindo, ${foundStudent.name}!`, 'success');
+        } else {
+             showToast('Senha incorreta.', 'error');
+        }
     } else {
-        showToast('Aluno não encontrado com este email.', 'error');
+        showToast('Email não encontrado. Contate seu Personal.', 'error');
     }
   };
 
@@ -130,7 +130,7 @@ const AppContent = () => {
     setActiveView('AUTH');
     setPreviousView('DASHBOARD');
     setSelectedWorkout(null);
-    setStudents([]); // Limpa dados sensíveis da memória
+    setStudents([]); 
     setWorkouts([]);
   };
 
@@ -231,7 +231,6 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-background text-slate-50 font-sans flex overflow-hidden">
-      {/* Sidebar for LG (Desktop) only - Tablets use bottom nav now for better spacing */}
       {!isFullscreenMode && (
           <aside className="hidden lg:flex w-64 flex-col bg-surface border-r border-slate-800 h-screen sticky top-0">
              <div className="p-6 flex flex-col items-center justify-center border-b border-slate-800 bg-slate-950">
@@ -308,7 +307,7 @@ const AppContent = () => {
   );
 }
 
-// Subcomponents for Nav (Same as before)
+// Subcomponents for Nav
 interface NavButtonProps { icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void; }
 const NavButton: React.FC<NavButtonProps> = ({ icon, label, isActive, onClick }) => (
   <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 transition-colors min-w-[60px] ${isActive ? 'text-primary' : 'text-slate-500'}`}>
@@ -321,7 +320,6 @@ const DesktopNavLink: React.FC<NavButtonProps> = ({ icon, label, isActive, onCli
   </button>
 );
 
-// Main Export Wrapper
 export default function App() {
     return (
         <ToastProvider>

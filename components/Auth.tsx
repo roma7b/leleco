@@ -4,12 +4,11 @@ import { UserRole } from '../types';
 import { useToast } from './ToastContext';
 
 interface AuthProps {
-  onLogin: (email: string, role: UserRole) => void;
+  onLogin: (email: string, password: string, role: UserRole) => void;
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const { showToast } = useToast();
-  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('STUDENT'); // Default to student for UX
@@ -17,8 +16,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin(email, role);
-      showToast(`Bem-vindo, ${role === 'TRAINER' ? 'Professor' : 'Aluno'}!`, 'success');
+      onLogin(email, password, role);
     } else {
       showToast('Preencha todos os campos', 'error');
     }
@@ -76,28 +74,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           </div>
 
           <div className="bg-slate-900/50 backdrop-blur-lg border border-slate-800 rounded-2xl shadow-2xl p-8">
-            <div className="flex gap-2 mb-8 bg-slate-950 p-1 rounded-lg">
-              <button 
-                type="button"
-                onClick={() => setIsRegister(false)}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${!isRegister ? 'bg-slate-800 text-white shadow ring-1 ring-white/5' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Entrar
-              </button>
-              <button 
-                type="button"
-                onClick={() => setIsRegister(true)}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${isRegister ? 'bg-slate-800 text-white shadow ring-1 ring-white/5' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Criar Conta
-              </button>
-            </div>
-
             <h2 className="text-2xl font-bold text-white mb-2">
-              {isRegister ? 'Comece sua jornada' : 'Bem-vindo de volta'}
+              Acesse sua conta
             </h2>
             <p className="text-slate-400 text-sm mb-8">
-              {isRegister ? 'Preencha os dados para iniciar seu cadastro.' : 'Insira suas credenciais para acessar o painel.'}
+              Insira suas credenciais para acessar o sistema.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -158,16 +139,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-hover text-slate-950 font-bold py-3.5 rounded-lg shadow-[0_0_20px_rgba(163,230,53,0.3)] flex items-center justify-center gap-2 transition-all mt-4 active:scale-[0.98]"
               >
-                {isRegister ? 'Criar Conta' : 'Entrar no Sistema'}
+                Entrar no Sistema
                 <ArrowRight size={18} />
               </button>
             </form>
 
-            {!isRegister && (
-              <p className="mt-8 text-center text-slate-500 text-sm">
-                Esqueceu a senha? <a href="#" className="text-primary hover:underline font-medium">Recuperar acesso</a>
-              </p>
-            )}
+            <p className="mt-8 text-center text-slate-500 text-sm">
+              Esqueceu a senha? <a href="#" className="text-primary hover:underline font-medium">Contate o suporte</a>
+            </p>
           </div>
         </div>
       </div>

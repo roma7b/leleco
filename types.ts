@@ -23,7 +23,8 @@ export interface Student {
   status: PaymentStatus;
   goal: string;
   lastPaymentDate: string;
-  email?: string; // Adicionado para simular login
+  email?: string; 
+  password?: string; // Adicionado campo de senha
 }
 
 export interface Exercise {
