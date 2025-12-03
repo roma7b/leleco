@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, ChevronLeft, Loader2 } from 'lucide-react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 interface AIChatProps {
   userName: string;
@@ -57,14 +57,7 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
     setIsLoading(true);
 
     try {
-      // Tenta pegar a chave do Vite (import.meta.env) ou do padrão antigo (process.env)
-      const apiKey = import.meta.env.VITE_API_KEY || process.env.API_KEY || '';
-      
-      if (!apiKey) {
-        throw new Error("API Key não configurada");
-      }
-
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       
       const systemInstruction = `
         Você é o 'Leleco AI', um assistente virtual de alta performance do Personal Trainer Leleco Coradini.
@@ -75,27 +68,17 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
         **Segurança:** Não prescreva treinos médicos ou dietas restritivas complexas.
       `;
 
-      // Configuração atualizada para a biblioteca padrão
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction: systemInstruction
+      const chat = ai.chats.create({
+        model: 'gemini-2.5-flash',
+        config: { systemInstruction, temperature: 0.8 },
+        history: messages.map(m => ({ role: m.role, parts: [{ text: m.text }] }))
       });
 
-      const chat = model.startChat({
-        history: messages.map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        }))
-      });
-
-      const result = await chat.sendMessage(userMessage.text);
-      const response = await result.response;
-      const text = response.text();
-      
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: text }]);
+      const result = await chat.sendMessage({ message: userMessage.text });
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: result.text }]);
     } catch (error) {
       console.error("Erro na IA:", error);
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: "Opa, deu uma falha na conexão. Verifica sua chave de API ou tenta de novo!" }]);
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: "Falha na conexão. Tente novamente." }]);
     } finally {
       setIsLoading(false);
     }

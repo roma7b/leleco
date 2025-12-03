@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit } from 'lucide-react';
 import { PaymentStatus, Student } from '../types';
 import { useToast } from './ToastContext';
 
@@ -16,6 +17,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
   
   // Estado do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null); // Novo estado para saber se está editando
+  
   const [newStudentData, setNewStudentData] = useState({
     name: '',
     email: '',
@@ -56,24 +59,66 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     }
   };
 
-  const handleAddStudentSubmit = (e: React.FormEvent) => {
+  // Abrir modal para NOVO aluno
+  const handleOpenNewStudent = () => {
+    setEditingStudentId(null);
+    setNewStudentData({ name: '', email: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setIsModalOpen(true);
+  };
+
+  // Abrir modal para EDITAR aluno
+  const handleOpenEditStudent = (e: React.MouseEvent, student: Student) => {
+    e.stopPropagation(); // Evita abrir o perfil
+    e.preventDefault();
+    
+    setEditingStudentId(student.id);
+    setNewStudentData({
+      name: student.name,
+      email: student.email || '',
+      goal: student.goal,
+      status: student.status
+    });
+    setOpenMenuId(null); // Fecha o menu
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentData.name) return;
 
-    const newStudent: Student = {
-      id: crypto.randomUUID(),
-      name: newStudentData.name,
-      email: newStudentData.email,
-      goal: newStudentData.goal,
-      status: newStudentData.status,
-      lastPaymentDate: new Date().toISOString(),
-      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(newStudentData.name)}&background=random&color=fff`
-    };
+    if (editingStudentId) {
+      // MODO EDIÇÃO
+      const studentToUpdate = students.find(s => s.id === editingStudentId);
+      if (studentToUpdate) {
+        const updatedStudent: Student = {
+          ...studentToUpdate,
+          name: newStudentData.name,
+          email: newStudentData.email,
+          goal: newStudentData.goal,
+          status: newStudentData.status,
+          // Mantém avatar e ID originais
+        };
+        onUpdateStudent(updatedStudent);
+        showToast(`Dados de ${newStudentData.name} atualizados!`, 'success');
+      }
+    } else {
+      // MODO CRIAÇÃO
+      const newStudent: Student = {
+        id: crypto.randomUUID(),
+        name: newStudentData.name,
+        email: newStudentData.email,
+        goal: newStudentData.goal,
+        status: newStudentData.status,
+        lastPaymentDate: new Date().toISOString(),
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(newStudentData.name)}&background=random&color=fff`
+      };
+      onAddStudent(newStudent);
+      showToast(`Aluno ${newStudentData.name} cadastrado!`, 'success');
+    }
 
-    onAddStudent(newStudent);
-    showToast(`Aluno ${newStudentData.name} cadastrado!`, 'success');
     setIsModalOpen(false);
     setNewStudentData({ name: '', email: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setEditingStudentId(null);
   };
 
   const toggleMenu = (e: React.MouseEvent, id: string) => {
@@ -113,7 +158,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
           </div>
 
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenNewStudent}
             className="bg-primary hover:bg-primary-hover text-slate-950 font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(163,230,53,0.3)] transition-all active:scale-95 whitespace-nowrap"
           >
             <UserPlus size={20} />
@@ -164,6 +209,18 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                       onClick={(e) => e.stopPropagation()}
                       className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 animate-fadeIn"
                     >
+                      <div className="p-2 text-xs text-slate-500 uppercase font-bold border-b border-slate-800 bg-slate-950/50">
+                        Ações
+                      </div>
+                      
+                      {/* BOTAO EDITAR */}
+                      <button 
+                        onClick={(e) => handleOpenEditStudent(e, student)}
+                        className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors border-b border-slate-800"
+                      >
+                        <Edit size={16} className="text-blue-400" /> Editar Dados
+                      </button>
+
                       <div className="p-2 text-xs text-slate-500 uppercase font-bold border-b border-slate-800 bg-slate-950/50">
                         Mudar Status
                       </div>
@@ -216,26 +273,29 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                 <ChevronRight size={16} className="text-slate-600 group-hover:text-primary transform group-hover:translate-x-1 transition-all" />
               </div>
             </div>
-            );
-          })}
+          )})}
         </div>
       )}
 
-      {/* MODAL DE CADASTRO */}
+      {/* MODAL DE CADASTRO / EDIÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-surface border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
             <div className="bg-slate-950/50 p-4 border-b border-slate-800 flex justify-between items-center">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <UserPlus size={20} className="text-primary" />
-                Cadastrar Aluno
+                {editingStudentId ? (
+                   <Edit size={20} className="text-blue-400" />
+                ) : (
+                   <UserPlus size={20} className="text-primary" />
+                )}
+                {editingStudentId ? 'Editar Aluno' : 'Cadastrar Aluno'}
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-white transition-colors">
                 <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleAddStudentSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Nome Completo</label>
                 <input 
@@ -295,10 +355,14 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
               <div className="pt-4">
                 <button 
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary-hover text-slate-950 font-bold py-3 rounded-lg shadow-[0_0_15px_rgba(163,230,53,0.3)] flex items-center justify-center gap-2 transition-all"
+                  className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
+                    editingStudentId 
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]' 
+                        : 'bg-primary hover:bg-primary-hover text-slate-950 shadow-[0_0_15px_rgba(163,230,53,0.3)]'
+                  }`}
                 >
                   <Save size={20} />
-                  Salvar Aluno
+                  {editingStudentId ? 'Atualizar Dados' : 'Salvar Aluno'}
                 </button>
               </div>
             </form>
