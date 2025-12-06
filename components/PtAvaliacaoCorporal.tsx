@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2 } from 'lucide-react';
 import { Student, Assessment } from '../types';
@@ -103,7 +102,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     };
 
     try {
-        // Passamos a metodologia como segundo argumento
+        // Passamos os dados completos da avaliação para a IA
         const strategic = await gerarRelatorioEstrategico(dadosCompletos, metodologia);
         const motivational = await gerarRelatorioMotivacional(dadosCompletos);
 
@@ -121,30 +120,53 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
   const handleSave = async () => {
       if (!selectedStudentId) return;
 
+      // Verificação mínima para salvar
+      if (!formData.weight || !formData.age || !formData.height) {
+          showToast('Preencha Peso, Idade e Altura para salvar.', 'error');
+          return;
+      }
+
       setLoading(true);
       const newAssessment: Assessment = {
           id: crypto.randomUUID(),
           studentId: selectedStudentId,
           date: new Date().toISOString(),
-          weight: parseFloat(formData.weight),
-          bodyFat: parseFloat(formData.bodyFat),
-          muscleMass: parseFloat(formData.muscleMass),
-          visceralFat: parseFloat(formData.visceralFat),
-          metabolicAge: parseFloat(formData.metabolicAge),
-          chest: parseFloat(formData.chest),
-          arms: parseFloat(formData.arms),
-          waist: parseFloat(formData.waist),
-          abdomen: parseFloat(formData.abdomen),
-          hips: parseFloat(formData.hips),
-          thighs: parseFloat(formData.thighs),
-          calves: parseFloat(formData.calves),
-          strategicReport: aiReportStrategic,
-          motivationalReport: aiReportMotivational
-          // Nota: Altura e Idade são usadas para IA e IMC, mas o Schema atual de Assessment 
-          // não tem esses campos explícitos, então não estamos salvando no DB direto 
-          // a não ser que atualizemos o type e o banco. 
-          // Por enquanto, ficam registrados no contexto da geração da IA.
+          
+          // DADOS ADICIONADOS AO SCHEMA DO SUPABASE
+          age: parseFloat(formData.age) || null,
+          height: parseFloat(formData.height) || null,
+          imc: parseFloat(formData.imc) || null,
+          fatCalculationMethod: formData.fatCalculationMethod || null,
+          tmbFormula: formData.tmbFormula || null,
+
+          // DADOS ORIGINAIS
+          weight: parseFloat(formData.weight) || null,
+          bodyFat: parseFloat(formData.bodyFat) || null,
+          muscleMass: parseFloat(formData.muscleMass) || null,
+          visceralFat: parseFloat(formData.visceralFat) || null,
+          metabolicAge: parseFloat(formData.metabolicAge) || null,
+          chest: parseFloat(formData.chest) || null,
+          arms: parseFloat(formData.arms) || null,
+          waist: parseFloat(formData.waist) || null,
+          abdomen: parseFloat(formData.abdomen) || null,
+          hips: parseFloat(formData.hips) || null,
+          thighs: parseFloat(formData.thighs) || null,
+          calves: parseFloat(formData.calves) || null,
+
+          // RELATÓRIOS (SALVOS NO BANCO PARA REFERÊNCIA FUTURA)
+          strategicReport: aiReportStrategic || null,
+          motivationalReport: aiReportMotivational || null
       };
+
+      // Remoção do tipo 'any' e garantia de que os números não sejam NaN
+      Object.keys(newAssessment).forEach(key => {
+          // @ts-ignore
+          if (typeof newAssessment[key] === 'number' && isNaN(newAssessment[key])) {
+              // @ts-ignore
+              newAssessment[key] = null; 
+          }
+      });
+
 
       const saved = await createAssessment(newAssessment);
       if (saved) {
@@ -154,7 +176,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
           setAiReportStrategic('');
           setAiReportMotivational('');
       } else {
-          showToast('Erro ao salvar no banco.', 'error');
+          showToast('Erro ao salvar no banco. Verifique o console.', 'error');
       }
       setLoading(false);
   };
@@ -229,14 +251,14 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 
                 {/* Linha de Biometria Básica */}
                 <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-slate-800">
-                     <InputGroup label="Idade (anos)" value={formData.age} onChange={(v) => setFormData({...formData, age: v})} />
-                     <InputGroup label="Altura (cm)" value={formData.height} onChange={(v) => setFormData({...formData, height: v})} />
-                     <div>
+                    <InputGroup label="Idade (anos)" value={formData.age} onChange={(v) => setFormData({...formData, age: v})} />
+                    <InputGroup label="Altura (cm)" value={formData.height} onChange={(v) => setFormData({...formData, height: v})} />
+                    <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">IMC (Auto)</label>
                         <div className="w-full bg-slate-950 border border-slate-800 text-primary font-bold p-3 rounded-lg text-center font-mono flex items-center justify-center gap-2">
                             <Calculator size={14} /> {formData.imc || '-.--'}
                         </div>
-                     </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -303,7 +325,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 )}
             </div>
         </div>
-      </div>
     </div>
   );
 };
@@ -379,7 +400,13 @@ const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
       </div>
     );
   } catch (error) {
-    return <p className="text-red-500">Erro ao processar relatório JSON. Verifique o console.</p>;
+    return (
+        <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-sm text-red-300">
+            <p className="font-bold mb-2">Erro de Análise JSON da IA:</p>
+            <p>O Gemini gerou um formato inválido. Tente novamente ou verifique o prompt.</p>
+            <p className="mt-3 text-xs opacity-70">Detalhes: {reportJson.substring(0, 150)}...</p>
+        </div>
+    );
   }
 };
 // --- FIM DO NOVO COMPONENTE DE RENDERIZAÇÃO ---
