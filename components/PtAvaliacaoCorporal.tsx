@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText } from 'lucide-react';
+import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2 } from 'lucide-react';
 import { Student, Assessment } from '../types';
 import { createAssessment, fetchAssessments } from '../services/db';
 import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
@@ -19,6 +19,11 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
   
   // Form State
   const [formData, setFormData] = useState({
+    // Novos campos de metodologia
+    fatCalculationMethod: 'Bioimpedância',
+    tmbFormula: 'Mifflin-St Jeor',
+    
+    // Dados numéricos
     weight: '',
     bodyFat: '',
     muscleMass: '',
@@ -70,8 +75,15 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
         avaliacao_anterior: previousAssessment || "Sem dados anteriores para comparação.",
     };
 
+    // Objeto de metodologia para validação da IA
+    const metodologia = {
+        metodo_gordura: formData.fatCalculationMethod,
+        formula_tmb: formData.tmbFormula
+    };
+
     try {
-        const strategic = await gerarRelatorioEstrategico(dadosCompletos);
+        // Passamos a metodologia como segundo argumento
+        const strategic = await gerarRelatorioEstrategico(dadosCompletos, metodologia);
         const motivational = await gerarRelatorioMotivacional(dadosCompletos);
 
         if (strategic) setAiReportStrategic(strategic);
@@ -150,10 +162,44 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 </div>
             </div>
 
+            {/* Configuração de Metodologia */}
+            <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Settings2 size={20} className="text-purple-400" /> Metodologia de Cálculo
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Calcular % Gordura por:</label>
+                        <select 
+                            value={formData.fatCalculationMethod}
+                            onChange={(e) => setFormData({...formData, fatCalculationMethod: e.target.value})}
+                            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none"
+                        >
+                            <option value="Bioimpedância">Bioimpedância</option>
+                            <option value="Dobras">Dobras Cutâneas (Pollock)</option>
+                            <option value="Medidas">Medidas (Fita Métrica)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Referência Met. Basal:</label>
+                        <select 
+                            value={formData.tmbFormula}
+                            onChange={(e) => setFormData({...formData, tmbFormula: e.target.value})}
+                            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none"
+                        >
+                            <option value="Mifflin-St Jeor">Mifflin-St Jeor (Padrão)</option>
+                            <option value="Harris Benedict">Harris Benedict</option>
+                            <option value="Teen Haaf">Teen Haaf (Atletas)</option>
+                            <option value="Cunningham">Cunningham (Alta Massa Magra)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             {/* Métricas Principais */}
             <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Activity size={20} className="text-blue-400" /> Composição Corporal (Bioimpedância)
+                    <Activity size={20} className="text-blue-400" /> Composição Corporal
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <InputGroup label="Peso (kg)" value={formData.weight} onChange={(v) => setFormData({...formData, weight: v})} />
