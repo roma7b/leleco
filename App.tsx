@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles } from 'lucide-react';
+import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles, ClipboardList, Activity } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import WorkoutBuilder from './components/WorkoutBuilder';
@@ -8,6 +9,8 @@ import Finance from './components/Finance';
 import Auth from './components/Auth';
 import StudentDashboard from './components/StudentDashboard';
 import AIChat from './components/AIChat';
+import PtAvaliacaoCorporal from './components/PtAvaliacaoCorporal';
+import StudentAssessment from './components/StudentAssessment';
 import { ViewState, WorkoutPlan, Student, User, UserRole } from './types';
 import { ToastProvider, useToast } from './components/ToastContext';
 
@@ -136,7 +139,7 @@ const AppContent = () => {
 
   // Navigation Logic
   const handleNavigate = (view: ViewState) => {
-    const mainViews: ViewState[] = ['DASHBOARD', 'STUDENTS', 'FINANCE'];
+    const mainViews: ViewState[] = ['DASHBOARD', 'STUDENTS', 'FINANCE', 'ASSESSMENTS'];
     const subViews: ViewState[] = ['WORKOUT_VIEWER', 'WORKOUT_BUILDER', 'AI_CHAT'];
 
     if (subViews.includes(view) && mainViews.includes(activeView)) {
@@ -214,9 +217,13 @@ const AppContent = () => {
           <WorkoutBuilder 
             students={students} 
             onCancel={handleBack} 
-            onSave={handleSaveNewWorkout} // Usando a nova função async
+            onSave={handleSaveNewWorkout} 
           />
         ) : null;
+      case 'ASSESSMENTS':
+        return isTrainer 
+            ? <PtAvaliacaoCorporal students={students} />
+            : <StudentAssessment user={user} />;
       case 'FINANCE':
         return isTrainer ? <Finance students={students} /> : null;
       case 'WORKOUT_VIEWER':
@@ -251,6 +258,7 @@ const AppContent = () => {
                 <>
                   <DesktopNavLink icon={<Home size={20} />} label="Dashboard" isActive={activeView === 'DASHBOARD'} onClick={() => handleNavigate('DASHBOARD')} />
                   <DesktopNavLink icon={<Users size={20} />} label="Alunos" isActive={activeView === 'STUDENTS'} onClick={() => handleNavigate('STUDENTS')} />
+                  <DesktopNavLink icon={<ClipboardList size={20} />} label="Avaliação Corporal" isActive={activeView === 'ASSESSMENTS'} onClick={() => handleNavigate('ASSESSMENTS')} />
                   <DesktopNavLink icon={<DollarSign size={20} />} label="Financeiro" isActive={activeView === 'FINANCE'} onClick={() => handleNavigate('FINANCE')} />
                   <div className="pt-4 pb-2">
                     <p className="px-4 text-xs font-bold text-slate-500 uppercase mb-2">Ações</p>
@@ -262,6 +270,7 @@ const AppContent = () => {
               ) : (
                 <>
                   <DesktopNavLink icon={<Home size={20} />} label="Meus Treinos" isActive={activeView === 'DASHBOARD'} onClick={() => handleNavigate('DASHBOARD')} />
+                  <DesktopNavLink icon={<Activity size={20} />} label="Minha Avaliação" isActive={activeView === 'ASSESSMENTS'} onClick={() => handleNavigate('ASSESSMENTS')} />
                   <DesktopNavLink icon={<Sparkles size={20} />} label="Leleco IA" isActive={activeView === 'AI_CHAT'} onClick={() => handleNavigate('AI_CHAT')} />
                 </>
               )}
@@ -290,12 +299,13 @@ const AppContent = () => {
                   <NavButton icon={<Home size={24} />} label="Home" isActive={activeView === 'DASHBOARD'} onClick={() => handleNavigate('DASHBOARD')} />
                   <NavButton icon={<Users size={24} />} label="Alunos" isActive={activeView === 'STUDENTS'} onClick={() => handleNavigate('STUDENTS')} />
                   <button onClick={() => handleNavigate('WORKOUT_BUILDER')} className="relative -top-6 bg-primary text-slate-950 p-4 rounded-full border-4 border-background shadow-lg shadow-primary/20 active:scale-95 transition-transform"><PlusCircle size={28} /></button>
-                  <NavButton icon={<DollarSign size={24} />} label="Finan." isActive={activeView === 'FINANCE'} onClick={() => handleNavigate('FINANCE')} />
+                  <NavButton icon={<ClipboardList size={24} />} label="Avaliação" isActive={activeView === 'ASSESSMENTS'} onClick={() => handleNavigate('ASSESSMENTS')} />
                   <NavButton icon={<LogOut size={24} />} label="Sair" isActive={false} onClick={handleLogout} />
                 </>
               ) : (
                 <>
                   <NavButton icon={<Home size={24} />} label="Treinos" isActive={activeView === 'DASHBOARD'} onClick={() => handleNavigate('DASHBOARD')} />
+                  <NavButton icon={<Activity size={24} />} label="Avaliação" isActive={activeView === 'ASSESSMENTS'} onClick={() => handleNavigate('ASSESSMENTS')} />
                   <NavButton icon={<Sparkles size={24} />} label="IA Chat" isActive={activeView === 'AI_CHAT'} onClick={() => handleNavigate('AI_CHAT')} />
                   <NavButton icon={<LogOut size={24} />} label="Sair" isActive={false} onClick={handleLogout} />
                 </>

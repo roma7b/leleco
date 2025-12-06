@@ -1,3 +1,4 @@
+
 export enum PaymentStatus {
   PAID = 'Pago',
   LATE = 'Atrasado',
@@ -24,7 +25,31 @@ export interface Student {
   goal: string;
   lastPaymentDate: string;
   email?: string; 
-  password?: string; // Adicionado campo de senha
+  password?: string;
+}
+
+export interface Assessment {
+  id: string;
+  studentId: string;
+  date: string;
+  weight: number;
+  bodyFat: number;
+  muscleMass: number;
+  visceralFat: number;
+  metabolicAge: number;
+  
+  // Medidas
+  chest?: number;
+  arms?: number;
+  waist?: number;
+  abdomen?: number;
+  hips?: number;
+  thighs?: number;
+  calves?: number;
+
+  // IA Reports
+  strategicReport?: string;
+  motivationalReport?: string;
 }
 
 export interface Exercise {
@@ -52,4 +77,4 @@ export interface WorkoutPlan {
   sessions: WorkoutSession[];
 }
 
-export type ViewState = 'AUTH' | 'DASHBOARD' | 'STUDENTS' | 'WORKOUT_BUILDER' | 'FINANCE' | 'WORKOUT_VIEWER' | 'AI_CHAT';
+export type ViewState = 'AUTH' | 'DASHBOARD' | 'STUDENTS' | 'WORKOUT_BUILDER' | 'FINANCE' | 'WORKOUT_VIEWER' | 'AI_CHAT' | 'ASSESSMENTS';

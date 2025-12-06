@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import { Student, WorkoutPlan, PaymentStatus } from '../types';
+import { Student, WorkoutPlan, PaymentStatus, Assessment } from '../types';
 
 // --- ALUNOS ---
 
@@ -39,7 +39,7 @@ export const createStudent = async (student: Student): Promise<Student | null> =
         status: student.status,
         goal: student.goal,
         last_payment_date: student.lastPaymentDate,
-        password: student.password, // Salvando a senha
+        password: student.password, 
       },
     ])
     .select()
@@ -52,12 +52,11 @@ export const createStudent = async (student: Student): Promise<Student | null> =
 
   return {
     ...student,
-    id: data.id, // Atualiza com o ID real do banco
+    id: data.id, 
   };
 };
 
 export const updateStudent = async (student: Student): Promise<boolean> => {
-  // Prepara o objeto de atualização
   const updateData: any = {
       status: student.status,
       goal: student.goal,
@@ -66,7 +65,6 @@ export const updateStudent = async (student: Student): Promise<boolean> => {
       email: student.email
   };
 
-  // Só atualiza a senha se ela foi fornecida (string não vazia)
   if (student.password && student.password.trim() !== '') {
       updateData.password = student.password;
   }
@@ -111,7 +109,7 @@ export const createWorkout = async (workout: WorkoutPlan): Promise<WorkoutPlan |
       {
         student_id: workout.studentId,
         title: workout.title,
-        content: workout.sessions, // Salvando o array de sessões como JSON
+        content: workout.sessions, 
         created_at: workout.createdAt
       },
     ])
@@ -125,6 +123,80 @@ export const createWorkout = async (workout: WorkoutPlan): Promise<WorkoutPlan |
 
   return {
     ...workout,
+    id: data.id
+  };
+};
+
+// --- AVALIAÇÕES ---
+
+export const fetchAssessments = async (studentId?: string): Promise<Assessment[]> => {
+  let query = supabase.from('assessments').select('*').order('date', { ascending: false });
+  
+  if (studentId) {
+    query = query.eq('student_id', studentId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Erro ao buscar avaliações:', error);
+    return [];
+  }
+
+  return data.map((a: any) => ({
+    id: a.id,
+    studentId: a.student_id,
+    date: a.date,
+    weight: a.weight,
+    bodyFat: a.body_fat,
+    muscleMass: a.muscle_mass,
+    visceralFat: a.visceral_fat,
+    metabolicAge: a.metabolic_age,
+    chest: a.chest,
+    arms: a.arms,
+    waist: a.waist,
+    abdomen: a.abdomen,
+    hips: a.hips,
+    thighs: a.thighs,
+    calves: a.calves,
+    strategicReport: a.strategic_report,
+    motivationalReport: a.motivational_report
+  }));
+};
+
+export const createAssessment = async (assessment: Assessment): Promise<Assessment | null> => {
+  const { data, error } = await supabase
+    .from('assessments')
+    .insert([
+      {
+        student_id: assessment.studentId,
+        date: assessment.date,
+        weight: assessment.weight,
+        body_fat: assessment.bodyFat,
+        muscle_mass: assessment.muscleMass,
+        visceral_fat: assessment.visceralFat,
+        metabolic_age: assessment.metabolicAge,
+        chest: assessment.chest,
+        arms: assessment.arms,
+        waist: assessment.waist,
+        abdomen: assessment.abdomen,
+        hips: assessment.hips,
+        thighs: assessment.thighs,
+        calves: assessment.calves,
+        strategic_report: assessment.strategicReport,
+        motivational_report: assessment.motivationalReport
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao salvar avaliação:', error);
+    return null;
+  }
+
+  return {
+    ...assessment,
     id: data.id
   };
 };

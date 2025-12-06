@@ -1,3 +1,4 @@
+
 /**
  * SUPABASE SQL SCHEMA DEFINITION
  * 
@@ -13,6 +14,7 @@ create table public.students (
   status text check (status in ('Pago', 'Atrasado', 'Pendente')),
   goal text,
   last_payment_date date,
+  password text, -- Added for student login
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -21,29 +23,35 @@ create table public.workout_plans (
   id uuid default gen_random_uuid() primary key,
   student_id uuid references public.students(id) on delete cascade,
   title text not null,
+  content jsonb, -- Stores the entire workout structure (sessions/exercises) as JSON
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Table: workout_sessions (e.g., Treino A, Treino B)
-create table public.workout_sessions (
+-- Table: assessments (Avaliações Físicas)
+create table public.assessments (
   id uuid default gen_random_uuid() primary key,
-  plan_id uuid references public.workout_plans(id) on delete cascade,
-  name text not null, -- e.g., "Treino A"
-  order_index integer default 0
-);
-
--- Table: exercises
-create table public.exercises (
-  id uuid default gen_random_uuid() primary key,
-  session_id uuid references public.workout_sessions(id) on delete cascade,
-  name text not null,
-  sets integer,
-  reps text,
-  weight text,
-  rest text,
-  video_url text, -- Stores YouTube/Vimeo/Drive link
-  notes text,
-  order_index integer default 0
+  student_id uuid references public.students(id) on delete cascade,
+  date date not null,
+  weight numeric,
+  body_fat numeric,
+  muscle_mass numeric,
+  visceral_fat numeric,
+  metabolic_age numeric,
+  
+  -- Medidas
+  chest numeric,
+  arms numeric,
+  waist numeric,
+  abdomen numeric,
+  hips numeric,
+  thighs numeric,
+  calves numeric,
+  
+  -- Relatórios IA
+  strategic_report text,
+  motivational_report text,
+  
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 */
 export const SCHEMA_INFO = "See file content for SQL definitions";
