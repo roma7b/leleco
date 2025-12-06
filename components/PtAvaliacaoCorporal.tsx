@@ -292,10 +292,10 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 </h3>
                 
                 {aiReportStrategic ? (
-                    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 rounded-xl border border-slate-800 text-sm text-slate-300 leading-relaxed whitespace-pre-line custom-scrollbar">
-                        {aiReportStrategic}
-                    </div>
-                ) : (
+    <div className="flex-1 overflow-y-auto p-4 rounded-xl text-sm leading-relaxed custom-scrollbar">
+        <ReportDisplay reportJson={aiReportStrategic} />
+    </div>
+) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-xl p-8 text-center">
                         <BrainCircuit size={48} className="mb-4 opacity-20" />
                         <p>Preencha os dados e clique em "Gerar Análise IA" para receber o relatório completo.</p>
@@ -322,3 +322,64 @@ const InputGroup = ({ label, value, onChange }: { label: string, value: string, 
 );
 
 export default PtAvaliacaoCorporal;
+
+// --- NOVO COMPONENTE DE RENDERIZAÇÃO DO RELATÓRIO ---
+interface StrategicReport {
+  diagnostico_estrategico: {
+    risco_principal: string;
+    justificativa_completa: string;
+    analise_metodologia: string;
+  };
+  resumo_evolucao_texto: {
+    eficacia_estrategia: string;
+    ponto_alerta: string;
+    destaque_progresso: string;
+  };
+  plano_ajuste_proxima_fase: { foco: string; acao: string }[];
+  anotacoes_aluno_sugeridas: string;
+}
+
+const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
+  try {
+    const report: StrategicReport = JSON.parse(reportJson);
+
+    // Função auxiliar para renderizar blocos
+    const renderBlock = (title: string, content: string | string[]) => (
+      <div className="mb-6 border-l-4 border-indigo-500 pl-4 bg-slate-900 p-3 rounded-lg">
+        <h4 className="font-bold text-indigo-400 text-sm uppercase mb-2">{title}</h4>
+        <p className="text-slate-300 text-sm">{content}</p>
+      </div>
+    );
+
+    return (
+      <div className="space-y-4">
+        {/* Diagnóstico Estratégico */}
+        <h3 className="text-xl font-bold text-white mt-4">Diagnóstico Estratégico</h3>
+        {renderBlock('Risco Principal', report.diagnostico_estrategico.risco_principal)}
+        {renderBlock('Análise Metodológica', report.diagnostico_estrategico.analise_metodologia)}
+        
+        {/* Análise de Progresso */}
+        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Análise de Progresso</h3>
+        {renderBlock('Eficácia da Estratégia', report.resumo_evolucao_texto.eficacia_estrategia)}
+        {renderBlock('Destaque Positivo', report.resumo_evolucao_texto.destaque_progresso)}
+
+        {/* Plano de Ajuste */}
+        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Plano de Ajuste (Próxima Fase)</h3>
+        <ul className="space-y-3">
+          {report.plano_ajuste_proxima_fase.map((item, index) => (
+            <li key={index} className="bg-slate-900 p-3 rounded-lg border-l-4 border-green-500">
+              <strong className="text-green-400">{item.foco}:</strong> <span className="text-slate-300">{item.acao}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Anotações para o Aluno */}
+        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Anotações Sugeridas (Resumo)</h3>
+        {renderBlock('Mensagem para o Aluno', report.anotacoes_aluno_sugeridas)}
+      </div>
+    );
+  } catch (error) {
+    return <p className="text-red-500">Erro ao processar relatório JSON. Verifique o console.</p>;
+  }
+};
+// --- FIM DO NOVO COMPONENTE DE RENDERIZAÇÃO ---
