@@ -28,6 +28,21 @@ interface StrategicReport {
 // --- 2. FUNÇÕES AUXILIARES (DEVE VIR ANTES DO COMPONENTE PRINCIPAL) ---
 // ----------------------------------------------------------------------------------
 
+// Componente de Input Auxiliar (Movido para o topo)
+const InputGroup = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
+    <div>
+        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{label}</label>
+        <input 
+            type="number" 
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none text-center font-mono"
+            placeholder="-"
+        />
+    </div>
+);
+
+
 // Componente para Renderizar o Relatório JSON Estruturado
 const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
   try {
@@ -78,20 +93,6 @@ const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
     );
   }
 };
-
-// Componente de Input Auxiliar
-const InputGroup = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
-    <div>
-        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{label}</label>
-        <input 
-            type="number" 
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none text-center font-mono"
-            placeholder="-"
-        />
-    </div>
-);
 
 
 // ----------------------------------------------------------------------------------
@@ -303,122 +304,4 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
             {/* Configuração de Metodologia */}
             <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Settings2 size={20} className="text-purple-400" /> Metodologia de Cálculo
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Calcular % Gordura por:</label>
-                        <select 
-                            value={formData.fatCalculationMethod}
-                            onChange={(e) => setFormData({...formData, fatCalculationMethod: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none"
-                        >
-                            <option value="Bioimpedância">Bioimpedância</option>
-                            <option value="Dobras">Dobras Cutâneas (Pollock)</option>
-                            <option value="Medidas">Medidas (Fita Métrica)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Referência Met. Basal:</label>
-                        <select 
-                            value={formData.tmbFormula}
-                            onChange={(e) => setFormData({...formData, tmbFormula: e.target.value})}
-                            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none"
-                        >
-                            <option value="Mifflin-St Jeor">Mifflin-St Jeor (Padrão)</option>
-                            <option value="Harris Benedict">Harris Benedict</option>
-                            <option value="Teen Haaf">Teen Haaf (Atletas)</option>
-                            <option value="Cunningham">Cunningham (Alta Massa Magra)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {/* Métricas Principais */}
-            <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Activity size={20} className="text-blue-400" /> Composição Corporal
-                </h3>
-                
-                {/* Linha de Biometria Básica */}
-                <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-slate-800">
-                    <InputGroup label="Idade (anos)" value={formData.age} onChange={(v) => setFormData({...formData, age: v})} />
-                    <InputGroup label="Altura (cm)" value={formData.height} onChange={(v) => setFormData({...formData, height: v})} />
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">IMC (Auto)</label>
-                        <div className="w-full bg-slate-950 border border-slate-800 text-primary font-bold p-3 rounded-lg text-center font-mono flex items-center justify-center gap-2">
-                            <Calculator size={14} /> {formData.imc || '-.--'}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <InputGroup label="Peso (kg)" value={formData.weight} onChange={(v) => setFormData({...formData, weight: v})} />
-                    <InputGroup label="Gordura (%)" value={formData.bodyFat} onChange={(v) => setFormData({...formData, bodyFat: v})} />
-                    <InputGroup label="Músculo (%)" value={formData.muscleMass} onChange={(v) => setFormData({...formData, muscleMass: v})} />
-                    <InputGroup label="Gordura Visceral" value={formData.visceralFat} onChange={(v) => setFormData({...formData, visceralFat: v})} />
-                    <InputGroup label="Idade Metabólica" value={formData.metabolicAge} onChange={(v) => setFormData({...formData, metabolicAge: v})} />
-                </div>
-            </div>
-
-            {/* Medidas */}
-            <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <Ruler size={20} className="text-yellow-400" /> Perimetria (cm)
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <InputGroup label="Peitoral" value={formData.chest} onChange={(v) => setFormData({...formData, chest: v})} />
-                    <InputGroup label="Braço (Dir)" value={formData.arms} onChange={(v) => setFormData({...formData, arms: v})} />
-                    <InputGroup label="Cintura" value={formData.waist} onChange={(v) => setFormData({...formData, waist: v})} />
-                    <InputGroup label="Abdômen" value={formData.abdomen} onChange={(v) => setFormData({...formData, abdomen: v})} />
-                    <InputGroup label="Quadril" value={formData.hips} onChange={(v) => setFormData({...formData, hips: v})} />
-                    <InputGroup label="Coxa (Dir)" value={formData.thighs} onChange={(v) => setFormData({...formData, thighs: v})} />
-                    <InputGroup label="Panturrilha" value={formData.calves} onChange={(v) => setFormData({...formData, calves: v})} />
-                </div>
-            </div>
-
-            {/* Botão Ação */}
-            <div className="flex gap-4">
-                <button 
-                    onClick={handleGenerateAI}
-                    disabled={generatingAI}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                    {generatingAI ? <Loader2 className="animate-spin" /> : <BrainCircuit />}
-                    {generatingAI ? 'Analisando dados...' : 'Gerar Análise IA'}
-                </button>
-                <button 
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="flex-1 bg-primary hover:bg-primary-hover text-slate-950 font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                    <Save /> Salvar Avaliação
-                </button>
-            </div>
-        </div>
-
-        {/* COLUNA DIREITA: PREVIEW IA */}
-        <div className="lg:col-span-1 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl h-full min-h-[500px] flex flex-col">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <FileText size={20} className="text-slate-400" /> Relatório Estratégico
-                </h3>
-                
-                {aiReportStrategic ? (
-    <div className="flex-1 overflow-y-auto p-4 rounded-xl text-sm leading-relaxed custom-scrollbar">
-        <ReportDisplay reportJson={aiReportStrategic} />
-    </div>
-) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-xl p-8 text-center">
-                        <BrainCircuit size={48} className="mb-4 opacity-20" />
-                        <p>Preencha os dados e clique em "Gerar Análise IA" para receber o relatório completo.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    </div>
-  );
-};
-
-export default PtAvaliacaoCorporal;
+                <h3 className="text-lg font-bold
