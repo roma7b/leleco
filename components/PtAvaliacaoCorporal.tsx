@@ -5,9 +5,10 @@ import { createAssessment, fetchAssessments } from '../services/db';
 import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
 import { useToast } from './ToastContext';
 
-// --- INICIO DAS FUNÇÕES AUXILIARES E INTERFACES (Definidas antes do componente principal) ---
+// ----------------------------------------------------------------------------------
+// --- 1. INTERFACES AUXILIARES (DEVE VIR PRIMEIRO) ---
+// ----------------------------------------------------------------------------------
 
-// Interface para o Componente de Renderização JSON (ReportDisplay)
 interface StrategicReport {
   diagnostico_estrategico: {
     risco_principal: string;
@@ -22,6 +23,10 @@ interface StrategicReport {
   plano_ajuste_proxima_fase: { foco: string; acao: string }[];
   anotacoes_aluno_sugeridas: string;
 }
+
+// ----------------------------------------------------------------------------------
+// --- 2. FUNÇÕES AUXILIARES (DEVE VIR ANTES DO COMPONENTE PRINCIPAL) ---
+// ----------------------------------------------------------------------------------
 
 // Componente para Renderizar o Relatório JSON Estruturado
 const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
@@ -64,7 +69,6 @@ const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
       </div>
     );
   } catch (error) {
-    // Exibição de erro caso o JSON seja inválido (útil para depuração da IA)
     return (
         <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-sm text-red-300">
             <p className="font-bold mb-2">Erro de Análise JSON da IA:</p>
@@ -88,8 +92,11 @@ const InputGroup = ({ label, value, onChange }: { label: string, value: string, 
         />
     </div>
 );
-// --- FIM DAS FUNÇÕES AUXILIARES ---
 
+
+// ----------------------------------------------------------------------------------
+// --- 3. COMPONENTE PRINCIPAL ---
+// ----------------------------------------------------------------------------------
 
 interface PtAvaliacaoCorporalProps {
   students: Student[];
@@ -414,81 +421,4 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
   );
 };
 
-// --- NOVO COMPONENTE DE RENDERIZAÇÃO DO RELATÓRIO ---
-interface StrategicReport {
-  diagnostico_estrategico: {
-    risco_principal: string;
-    justificativa_completa: string;
-    analise_metodologia: string;
-  };
-  resumo_evolucao_texto: {
-    eficacia_estrategia: string;
-    ponto_alerta: string;
-    destaque_progresso: string;
-  };
-  plano_ajuste_proxima_fase: { foco: string; acao: string }[];
-  anotacoes_aluno_sugeridas: string;
-}
-
-const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
-  try {
-    const report: StrategicReport = JSON.parse(reportJson);
-
-    // Função auxiliar para renderizar blocos
-    const renderBlock = (title: string, content: string | string[]) => (
-      <div className="mb-6 border-l-4 border-indigo-500 pl-4 bg-slate-900 p-3 rounded-lg">
-        <h4 className="font-bold text-indigo-400 text-sm uppercase mb-2">{title}</h4>
-        <p className="text-slate-300 text-sm">{content}</p>
-      </div>
-    );
-
-    return (
-      <div className="space-y-4">
-        {/* Diagnóstico Estratégico */}
-        <h3 className="text-xl font-bold text-white mt-4">Diagnóstico Estratégico</h3>
-        {renderBlock('Risco Principal', report.diagnostico_estrategico.risco_principal)}
-        {renderBlock('Análise Metodológica', report.diagnostico_estrategico.analise_metodologia)}
-        
-        {/* Análise de Progresso */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Análise de Progresso</h3>
-        {renderBlock('Eficácia da Estratégia', report.resumo_evolucao_texto.eficacia_estrategia)}
-        {renderBlock('Destaque Positivo', report.resumo_evolucao_texto.destaque_progresso)}
-
-        {/* Plano de Ajuste */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Plano de Ajuste (Próxima Fase)</h3>
-        <ul className="space-y-3">
-          {report.plano_ajuste_proxima_fase.map((item, index) => (
-            <li key={index} className="bg-slate-900 p-3 rounded-lg border-l-4 border-green-500">
-              <strong className="text-green-400">{item.foco}:</strong> <span className="text-slate-300">{item.acao}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Anotações para o Aluno */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Anotações Sugeridas (Resumo)</h3>
-        {renderBlock('Mensagem para o Aluno', report.anotacoes_aluno_sugeridas)}
-      </div>
-    );
-  } catch (error) {
-    return (
-        <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-sm text-red-300">
-            <p className="font-bold mb-2">Erro de Análise JSON da IA:</p>
-            <p>O Gemini gerou um formato inválido. Tente novamente ou verifique o console.</p>
-            <p className="mt-3 text-xs opacity-70">Detalhes: {reportJson.substring(0, 150)}...</p>
-        </div>
-    );
-  }
-};
-
-const InputGroup = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
-    <div>
-        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{label}</label>
-        <input 
-            type="number" 
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none text-center font-mono"
-            placeholder="-"
-        />
-    </div>
-);
+export default PtAvaliacaoCorporal;
