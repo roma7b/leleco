@@ -23,6 +23,11 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     fatCalculationMethod: 'Bioimpedância',
     tmbFormula: 'Mifflin-St Jeor',
     
+    // Dados Biométricos Básicos
+    age: '',      // Idade
+    height: '',   // Altura (cm)
+    imc: '',      // IMC (Calculado)
+
     // Dados numéricos
     weight: '',
     bodyFat: '',
@@ -47,6 +52,22 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     }
   }, [selectedStudentId]);
 
+  // Cálculo Automático do IMC
+  useEffect(() => {
+    const weightVal = parseFloat(formData.weight);
+    const heightVal = parseFloat(formData.height);
+
+    if (weightVal > 0 && heightVal > 0) {
+        // Conversão de cm para metros
+        const heightInMeters = heightVal / 100;
+        // Fórmula: Peso / (Altura * Altura)
+        const imcValue = weightVal / (heightInMeters * heightInMeters);
+        setFormData(prev => ({ ...prev, imc: imcValue.toFixed(2) }));
+    } else {
+        setFormData(prev => ({ ...prev, imc: '' }));
+    }
+  }, [formData.weight, formData.height]);
+
   const loadHistory = async (id: string) => {
       const history = await fetchAssessments(id);
       if (history.length > 0) {
@@ -66,7 +87,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
     const dadosAtuais = {
         data: new Date().toLocaleDateString('pt-BR'),
-        ...formData
+        ...formData // Inclui age, height e imc automaticamente
     };
 
     const dadosCompletos = {
@@ -119,6 +140,10 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
           calves: parseFloat(formData.calves),
           strategicReport: aiReportStrategic,
           motivationalReport: aiReportMotivational
+          // Nota: Altura e Idade são usadas para IA e IMC, mas o Schema atual de Assessment 
+          // não tem esses campos explícitos, então não estamos salvando no DB direto 
+          // a não ser que atualizemos o type e o banco. 
+          // Por enquanto, ficam registrados no contexto da geração da IA.
       };
 
       const saved = await createAssessment(newAssessment);
@@ -201,6 +226,19 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Activity size={20} className="text-blue-400" /> Composição Corporal
                 </h3>
+                
+                {/* Linha de Biometria Básica */}
+                <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-slate-800">
+                     <InputGroup label="Idade (anos)" value={formData.age} onChange={(v) => setFormData({...formData, age: v})} />
+                     <InputGroup label="Altura (cm)" value={formData.height} onChange={(v) => setFormData({...formData, height: v})} />
+                     <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">IMC (Auto)</label>
+                        <div className="w-full bg-slate-950 border border-slate-800 text-primary font-bold p-3 rounded-lg text-center font-mono flex items-center justify-center gap-2">
+                            <Calculator size={14} /> {formData.imc || '-.--'}
+                        </div>
+                     </div>
+                </div>
+
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <InputGroup label="Peso (kg)" value={formData.weight} onChange={(v) => setFormData({...formData, weight: v})} />
                     <InputGroup label="Gordura (%)" value={formData.bodyFat} onChange={(v) => setFormData({...formData, bodyFat: v})} />
