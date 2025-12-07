@@ -1,307 +1,350 @@
-import React, { useState, useEffect } from 'react';
-import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2 } from 'lucide-react';
-import { Student, Assessment } from '../types';
-import { createAssessment, fetchAssessments } from '../services/db';
-import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
-import { useToast } from './ToastContext';
 
-// ----------------------------------------------------------------------------------
-// --- 1. INTERFACES AUXILIARES (DEVE VIR PRIMEIRO) ---
-// ----------------------------------------------------------------------------------
+import React, { useEffect, useState } from 'react';
+import { Activity, TrendingDown, TrendingUp, Minus, Calendar, Trophy, Target, Dumbbell, Utensils, Brain, Quote, ArrowRight, Star } from 'lucide-react';
+import { Assessment, User } from '../types';
+import { fetchAssessments } from '../services/db';
 
-interface StrategicReport {
-  diagnostico_estrategico: {
-    risco_principal: string;
-    justificativa_completa: string;
-    analise_metodologia: string;
-  };
-  resumo_evolucao_texto: {
-    eficacia_estrategia: string;
-    ponto_alerta: string;
-    destaque_progresso: string;
-  };
-  plano_ajuste_proxima_fase: { foco: string; acao: string }[];
-  anotacoes_aluno_sugeridas: string;
+interface StudentAssessmentProps {
+  user: User;
 }
 
-// ----------------------------------------------------------------------------------
-// --- 2. FUNÇÕES AUXILIARES (DEVE VIR ANTES DO COMPONENTE PRINCIPAL) ---
-// ----------------------------------------------------------------------------------
+const StudentAssessment: React.FC<StudentAssessmentProps> = ({ user }) => {
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-// Componente de Input Auxiliar (Movido para o topo)
-const InputGroup = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
-    <div>
-        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{label}</label>
-        <input 
-            type="number" 
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none text-center font-mono"
-            placeholder="-"
-        />
+  useEffect(() => {
+      if (user.studentId) {
+          fetchAssessments(user.studentId).then(data => {
+              // Garante ordenação por data (mais recente primeiro)
+              const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              setAssessments(sorted);
+              setLoading(false);
+          });
+      }
+  }, [user]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 text-primary animate-pulse">
+        <Activity className="animate-spin mr-2" /> Carregando sua evolução...
     </div>
-);
+  );
 
-
-// Componente para Renderizar o Relatório JSON Estruturado
-const ReportDisplay: React.FC<{ reportJson: string }> = ({ reportJson }) => {
-  try {
-    const report: StrategicReport = JSON.parse(reportJson);
-
-    // Função auxiliar para renderizar blocos estilizados
-    const renderBlock = (title: string, content: string | string[]) => (
-      <div className="mb-6 border-l-4 border-indigo-500 pl-4 bg-slate-900 p-3 rounded-lg">
-        <h4 className="font-bold text-indigo-400 text-sm uppercase mb-2">{title}</h4>
-        <p className="text-slate-300 text-sm">{content}</p>
-      </div>
-    );
-
-    return (
-      <div className="space-y-4">
-        {/* Diagnóstico Estratégico */}
-        <h3 className="text-xl font-bold text-white mt-4">Diagnóstico Estratégico</h3>
-        {renderBlock('Risco Principal', report.diagnostico_estrategico.risco_principal)}
-        {renderBlock('Análise Metodológica', report.diagnostico_estrategico.analise_metodologia)}
-        
-        {/* Análise de Progresso */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Análise de Progresso</h3>
-        {renderBlock('Eficácia da Estratégia', report.resumo_evolucao_texto.eficacia_estrategia)}
-        {renderBlock('Destaque Positivo', report.resumo_evolucao_texto.destaque_progresso)}
-
-        {/* Plano de Ajuste */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Plano de Ajuste (Próxima Fase)</h3>
-        <ul className="space-y-3">
-          {report.plano_ajuste_proxima_fase.map((item, index) => (
-            <li key={index} className="bg-slate-900 p-3 rounded-lg border-l-4 border-green-500">
-              <strong className="text-green-400">{item.foco}:</strong> <span className="text-slate-300">{item.acao}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Anotações para o Aluno */}
-        <h3 className="text-xl font-bold text-white pt-4 border-t border-slate-800">Anotações Sugeridas (Resumo)</h3>
-        {renderBlock('Mensagem para o Aluno', report.anotacoes_aluno_sugeridas)}
-      </div>
-    );
-  } catch (error) {
-    return (
-        <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg text-sm text-red-300">
-            <p className="font-bold mb-2">Erro de Análise JSON da IA:</p>
-            <p>O Gemini gerou um formato inválido. Tente novamente ou verifique o console.</p>
-            <p className="mt-3 text-xs opacity-70">Detalhes: {reportJson.substring(0, 150)}...</p>
-        </div>
-    );
+  if (assessments.length === 0) {
+      return (
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6 animate-fadeIn">
+              <div className="bg-slate-900 p-6 rounded-full mb-4 shadow-[0_0_30px_rgba(163,230,53,0.1)]">
+                 <Activity size={48} className="text-slate-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Sem dados ainda</h2>
+              <p className="text-slate-500 max-w-sm">
+                  Assim que seu treinador realizar sua primeira avaliação física, os gráficos e metas aparecerão aqui.
+              </p>
+          </div>
+      );
   }
-};
 
+  // Definição de Comparativos
+  const current = assessments[0]; // Última (Mais recente)
+  const previous = assessments[1]; // Penúltima (Para evolução recente)
+  const initial = assessments[assessments.length - 1]; // Primeira (Para evolução total)
 
-// ----------------------------------------------------------------------------------
-// --- 3. COMPONENTE PRINCIPAL ---
-// ----------------------------------------------------------------------------------
+  // Função Auxiliar para Calcular Diferenças (Cards do Topo)
+  const calculateDiff = (curr: number, prev: number | undefined, invertBetter = false) => {
+      if (prev === undefined) return <span className="text-slate-600 text-xs font-medium">Marco Zero</span>;
+      
+      const diff = curr - prev;
+      if (Math.abs(diff) < 0.1) return <span className="text-slate-500 text-xs font-medium flex items-center gap-1"><Minus size={10}/> Estável</span>;
 
-interface PtAvaliacaoCorporalProps {
-  students: Student[];
-}
+      // Se invertBetter é true, aumentar é bom (ex: Músculo). Se false, diminuir é bom (ex: Gordura).
+      const isGood = invertBetter ? diff > 0 : diff < 0;
+      
+      const colorClass = isGood ? "text-primary" : "text-red-400";
+      const Icon = diff > 0 ? TrendingUp : TrendingDown;
+      const sign = diff > 0 ? "+" : "";
 
-const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) => {
-  const { showToast } = useToast();
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
-  const [loading, setLoading] = useState(false);
-  const [generatingAI, setGeneratingAI] = useState(false);
-  const [previousAssessment, setPreviousAssessment] = useState<Assessment | null>(null);
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    // Campos de metodologia
-    fatCalculationMethod: 'Bioimpedância',
-    tmbFormula: 'Mifflin-St Jeor',
-    
-    // Dados Biométricos Básicos
-    age: '',      
-    height: '',   
-    imc: '',      
+      return (
+          <span className={`${colorClass} text-xs font-bold flex items-center gap-1 bg-slate-950/50 px-2 py-1 rounded-lg border border-slate-800`}>
+              <Icon size={12} /> {sign}{diff.toFixed(1)} vs. anterior
+          </span>
+      );
+  };
 
-    // Dados numéricos
-    weight: '',
-    bodyFat: '',
-    muscleMass: '',
-    visceralFat: '',
-    metabolicAge: '',
-    chest: '',
-    arms: '',
-    waist: '',
-    abdomen: '',
-    hips: '',
-    thighs: '',
-    calves: '',
-  });
-
-  const [aiReportStrategic, setAiReportStrategic] = useState<string>('');
-  const [aiReportMotivational, setAiReportMotivational] = useState<string>('');
-
-  useEffect(() => {
-    if (selectedStudentId) {
-        loadHistory(selectedStudentId);
-    }
-  }, [selectedStudentId]);
-
-  // Cálculo Automático do IMC
-  useEffect(() => {
-    const weightVal = parseFloat(formData.weight);
-    const heightVal = parseFloat(formData.height);
-
-    if (weightVal > 0 && heightVal > 0) {
-        // Conversão de cm para metros
-        const heightInMeters = heightVal / 100;
-        // Fórmula: Peso / (Altura * Altura)
-        const imcValue = weightVal / (heightInMeters * heightInMeters);
-        setFormData(prev => ({ ...prev, imc: imcValue.toFixed(2) }));
-    } else {
-        setFormData(prev => ({ ...prev, imc: '' }));
-    }
-  }, [formData.weight, formData.height]);
-
-  const loadHistory = async (id: string) => {
-      const history = await fetchAssessments(id);
-      if (history.length > 0) {
-          setPreviousAssessment(history[0]); // Pega a mais recente
-      } else {
-          setPreviousAssessment(null);
+  // Parser do Relatório IA
+  const parseAIReport = (jsonString: string | undefined) => {
+      if (!jsonString) return null;
+      try {
+          const cleanJson = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+          return JSON.parse(cleanJson);
+      } catch (e) {
+          return null;
       }
   };
 
-  const handleGenerateAI = async () => {
-    if (!formData.weight || !formData.bodyFat || !formData.muscleMass) {
-        showToast('Preencha pelo menos Peso, Gordura e Músculo.', 'error');
-        return;
-    }
-
-    setGeneratingAI(true);
-
-    const dadosAtuais = {
-        data: new Date().toLocaleDateString('pt-BR'),
-        ...formData 
-    };
-
-    const dadosCompletos = {
-        aluno: students.find(s => s.id === selectedStudentId)?.name,
-        avaliacao_atual: dadosAtuais,
-        avaliacao_anterior: previousAssessment || "Sem dados anteriores para comparação.",
-    };
-
-    // Objeto de metodologia para validação da IA
-    const metodologia = {
-        metodo_gordura: formData.fatCalculationMethod,
-        formula_tmb: formData.tmbFormula
-    };
-
-    try {
-        // Chamadas às funções de IA
-        const strategic = await gerarRelatorioEstrategico(dadosCompletos, metodologia);
-        const motivational = await gerarRelatorioMotivacional(dadosCompletos);
-
-        if (strategic) setAiReportStrategic(strategic);
-        if (motivational) setAiReportMotivational(motivational);
-        
-        showToast('Relatórios gerados com sucesso!', 'success');
-    } catch (e) {
-        showToast('Erro ao gerar relatório.', 'error');
-    } finally {
-        setGeneratingAI(false);
-    }
-  };
-
-  const handleSave = async () => {
-      if (!selectedStudentId) return;
-
-      // Verificação mínima para salvar
-      if (!formData.weight || !formData.age || !formData.height) {
-          showToast('Preencha Peso, Idade e Altura para salvar.', 'error');
-          return;
-      }
-
-      setLoading(true);
-      const newAssessment: Assessment = {
-          id: crypto.randomUUID(),
-          studentId: selectedStudentId,
-          date: new Date().toISOString(),
-          
-          // DADOS BÁSICOS (USADOS NO IMC)
-          age: parseFloat(formData.age) || null,
-          height: parseFloat(formData.height) || null,
-          imc: parseFloat(formData.imc) || null,
-          fatCalculationMethod: formData.fatCalculationMethod || null,
-          tmbFormula: formData.tmbFormula || null,
-
-          // DADOS ORIGINAIS
-          weight: parseFloat(formData.weight) || null,
-          bodyFat: parseFloat(formData.bodyFat) || null,
-          muscleMass: parseFloat(formData.muscleMass) || null,
-          visceralFat: parseFloat(formData.visceralFat) || null,
-          metabolicAge: parseFloat(formData.metabolicAge) || null,
-          chest: parseFloat(formData.chest) || null,
-          arms: parseFloat(formData.arms) || null,
-          waist: parseFloat(formData.waist) || null,
-          abdomen: parseFloat(formData.abdomen) || null,
-          hips: parseFloat(formData.hips) || null,
-          thighs: parseFloat(formData.thighs) || null,
-          calves: parseFloat(formData.calves) || null,
-
-          // RELATÓRIOS (SALVOS NO BANCO PARA REFERÊNCIA FUTURA)
-          strategicReport: aiReportStrategic || null,
-          motivationalReport: aiReportMotivational || null
-      };
-
-      // Limpeza de NaN para evitar erros no Supabase
-      Object.keys(newAssessment).forEach(key => {
-          // @ts-ignore
-          if (typeof newAssessment[key] === 'number' && isNaN(newAssessment[key])) {
-              // @ts-ignore
-              newAssessment[key] = null; 
-          }
-      });
-
-
-      const saved = await createAssessment(newAssessment);
-      if (saved) {
-          showToast('Avaliação salva com sucesso!', 'success');
-          setPreviousAssessment(saved);
-          setAiReportStrategic('');
-          setAiReportMotivational('');
-      } else {
-          showToast('Erro ao salvar no banco. Verifique o console.', 'error');
-      }
-      setLoading(false);
-  };
+  const aiData = parseAIReport(current.motivationalReport);
 
   return (
-    <div className="max-w-6xl mx-auto animate-fadeIn pb-24">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <ClipboardList className="text-primary" size={32} /> Nova Avaliação Física
-        </h1>
-        <p className="text-slate-400">Registre métricas corporais e use a IA para gerar estratégia.</p>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COLUNA ESQUERDA: INPUTS */}
-        <div className="lg:col-span-2 space-y-6">
+    <div className="max-w-5xl mx-auto animate-fadeIn pb-24 space-y-8">
+       
+       {/* SEÇÃO 1: CABEÇALHO E RESUMO RÁPIDO */}
+       <header className="relative overflow-hidden rounded-3xl bg-surface border border-slate-800 shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-10 -mt-10"></div>
             
-            {/* Seleção de Aluno */}
-            <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Selecione o Aluno</label>
-                <div className="relative">
-                    <User className="absolute left-3 top-3.5 text-primary" size={20} />
-                    <select 
-                        value={selectedStudentId}
-                        onChange={(e) => setSelectedStudentId(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 text-white pl-10 p-3 rounded-xl focus:border-primary outline-none"
-                    >
-                        {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+            <div className="p-6 md:p-8 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                    <div>
+                        <span className="text-xs font-bold text-primary uppercase tracking-widest mb-1 block flex items-center gap-2">
+                             <Calendar size={14} /> Atualizado em {new Date(current.date).toLocaleDateString('pt-BR')}
+                        </span>
+                        <h1 className="text-3xl md:text-4xl font-black text-white italic">MINHA EVOLUÇÃO</h1>
+                    </div>
+                    {/* Badge de Status */}
+                    <div className="flex items-center gap-3 bg-slate-950/50 p-2 pr-4 rounded-full border border-slate-800">
+                         <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-bold text-xs border border-slate-700">
+                             IMC
+                         </div>
+                         <div>
+                             <p className="text-xs text-slate-500 uppercase font-bold">Índice Atual</p>
+                             <p className="text-white font-bold">{current.imc ? current.imc : '-.--'}</p>
+                         </div>
+                    </div>
+                </div>
+
+                {/* Cards de Métricas Principais */}
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-center relative overflow-hidden group hover:border-slate-700 transition-colors">
+                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Peso</p>
+                        <p className="text-2xl md:text-4xl font-black text-white mb-2">{current.weight}<span className="text-sm text-slate-600 ml-1">kg</span></p>
+                        <div className="flex justify-center">{calculateDiff(current.weight, previous?.weight, false)}</div>
+                    </div>
+                    <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-center relative overflow-hidden group hover:border-slate-700 transition-colors">
+                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Gordura</p>
+                        <p className="text-2xl md:text-4xl font-black text-white mb-2">{current.bodyFat}<span className="text-sm text-slate-600 ml-1">%</span></p>
+                        <div className="flex justify-center">{calculateDiff(current.bodyFat, previous?.bodyFat, false)}</div>
+                    </div>
+                    <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-center relative overflow-hidden group hover:border-primary/30 transition-colors">
+                        <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <p className="text-xs text-slate-500 uppercase font-bold mb-1 group-hover:text-primary transition-colors">Músculo</p>
+                        <p className="text-2xl md:text-4xl font-black text-white mb-2">{current.muscleMass}<span className="text-sm text-slate-600 ml-1">%</span></p>
+                        <div className="flex justify-center">{calculateDiff(current.muscleMass, previous?.muscleMass, true)}</div>
+                    </div>
                 </div>
             </div>
+       </header>
 
-            {/* Configuração de Metodologia */}
-            <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
-                <h3 className="text-lg font-bold
+       {/* SEÇÃO 2: GRÁFICOS DE TENDÊNCIA (Só aparece se tiver +1 avaliação) */}
+       {assessments.length > 1 && (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <TrendChart 
+                  data={assessments} 
+                  dataKey="weight" 
+                  color="#a3e635" 
+                  label="Evolução de Peso (kg)"
+                  suffix="kg"
+                />
+               <TrendChart 
+                  data={assessments} 
+                  dataKey="bodyFat" 
+                  color="#60a5fa" 
+                  label="Evolução de Gordura (%)" 
+                  suffix="%"
+                />
+           </div>
+       )}
+
+       {/* SEÇÃO 3: FEEDBACK DA INTELIGÊNCIA ARTIFICIAL */}
+       {aiData && (
+           <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
+               <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
+               <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-blue-500/5 rounded-full blur-[100px]"></div>
+
+               <div className="relative z-10">
+                   <div className="flex items-center gap-3 mb-6">
+                       <div className="bg-primary text-slate-950 p-2.5 rounded-lg shadow-[0_0_15px_rgba(163,230,53,0.4)]">
+                           <Trophy size={24} fill="currentColor" />
+                       </div>
+                       <h2 className="text-xl md:text-2xl font-black text-white uppercase italic tracking-tight">
+                           {aiData.titulo_motivacional || "Análise do Treinador"}
+                       </h2>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                       <div className="bg-slate-800/40 border border-slate-700/50 p-5 rounded-2xl hover:bg-slate-800/60 transition-colors">
+                           <h3 className="text-primary font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2">
+                               <Star size={14} fill="currentColor" /> Grandes Conquistas
+                           </h3>
+                           <p className="text-slate-200 text-sm leading-relaxed">{aiData.conquistas_recentes}</p>
+                       </div>
+
+                       <div className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl hover:bg-blue-500/10 transition-colors">
+                           <h3 className="text-blue-400 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2">
+                               <Target size={14} /> Foco da Fase
+                           </h3>
+                           <p className="text-slate-200 text-sm leading-relaxed">{aiData.foco_principal_traduzido}</p>
+                       </div>
+                   </div>
+
+                   <h3 className="text-white font-bold text-sm mb-4 uppercase tracking-wider opacity-80">Suas 3 Missões para a Próxima Fase</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                       {aiData.objetivos_proxima_fase?.map((obj: any, idx: number) => (
+                           <div key={idx} className="bg-surface border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center shadow-lg group hover:border-primary/30 transition-all">
+                               <div className="mb-3 p-3 bg-slate-900 rounded-full text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                                   {obj.area === 'Treino' && <Dumbbell size={20} />}
+                                   {obj.area === 'Alimentação' && <Utensils size={20} />}
+                                   {obj.area === 'Hábito' && <Brain size={20} />}
+                               </div>
+                               <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">{obj.area}</p>
+                               <p className="text-slate-200 text-sm font-medium">{obj.acao}</p>
+                           </div>
+                       ))}
+                   </div>
+
+                   <div className="flex gap-4 items-start bg-slate-950/50 p-5 rounded-2xl border border-slate-800">
+                       <Quote className="text-slate-600 flex-shrink-0" size={24} />
+                       <p className="text-slate-400 text-sm italic leading-relaxed">"{aiData.mensagem_final}"</p>
+                   </div>
+               </div>
+           </div>
+       )}
+
+       {/* SEÇÃO 4: TABELA DE INDICADORES */}
+       <div className="bg-surface border border-slate-800 rounded-3xl overflow-hidden shadow-lg">
+           <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+               <h3 className="font-bold text-white flex items-center gap-2">
+                   <Activity size={18} className="text-primary" /> Resumo das Avaliações
+               </h3>
+               {initial && initial.id !== current.id && (
+                   <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700">
+                       Desde {new Date(initial.date).toLocaleDateString('pt-BR')}
+                   </span>
+               )}
+           </div>
+           
+           <div className="overflow-x-auto">
+               <table className="w-full text-sm text-left">
+                   <thead className="bg-slate-900 text-slate-500 uppercase text-[10px] font-bold tracking-wider">
+                       <tr>
+                           <th className="px-6 py-4">Indicador</th>
+                           <th className="px-6 py-4 text-center">Atual</th>
+                           <th className="px-6 py-4 text-center">Evolução Recente</th>
+                           <th className="px-6 py-4 text-center">Evolução Total</th>
+                       </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-800 text-slate-300">
+                       <IndicatorRow label="Peso Corporal (kg)" current={current.weight} prev={previous?.weight} initial={initial?.weight} invert={false} />
+                       <IndicatorRow label="% Gordura" current={current.bodyFat} prev={previous?.bodyFat} initial={initial?.bodyFat} invert={false} />
+                       <IndicatorRow label="% Músculo" current={current.muscleMass} prev={previous?.muscleMass} initial={initial?.muscleMass} invert={true} />
+                       <IndicatorRow label="Cintura (cm)" current={current.waist} prev={previous?.waist} initial={initial?.waist} invert={false} />
+                       <IndicatorRow label="Abdômen (cm)" current={current.abdomen} prev={previous?.abdomen} initial={initial?.abdomen} invert={false} />
+                       <IndicatorRow label="Gordura Visceral" current={current.visceralFat} prev={previous?.visceralFat} initial={initial?.visceralFat} invert={false} />
+                   </tbody>
+               </table>
+           </div>
+       </div>
+    </div>
+  );
+};
+
+// --- COMPONENTES AUXILIARES ---
+
+// 1. Gráfico SVG Nativo
+const TrendChart = ({ data, dataKey, color, label, suffix }: any) => {
+    // Ordena do mais antigo para o mais novo para o gráfico
+    const chartData = [...data].reverse().filter(item => item[dataKey] !== undefined && item[dataKey] !== null);
+    
+    if (chartData.length < 2) return null;
+
+    const values = chartData.map(d => Number(d[dataKey]));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1; // Evita divisão por zero
+    
+    // Configurações do SVG
+    const width = 100;
+    const height = 50;
+    const padding = 5;
+
+    // Normaliza os pontos
+    const points = chartData.map((d, i) => {
+        const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
+        const normalizedValue = (Number(d[dataKey]) - min) / range;
+        const y = height - (normalizedValue * (height - padding * 2) + padding);
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <div className="bg-surface border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+            <h4 className="text-slate-400 text-xs font-bold uppercase mb-4">{label}</h4>
+            <div className="h-32 w-full relative">
+                 <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                     {/* Linha */}
+                     <polyline 
+                        fill="none" 
+                        stroke={color} 
+                        strokeWidth="2" 
+                        points={points} 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                     />
+                     {/* Pontos */}
+                     {chartData.map((d, i) => {
+                         const x = (i / (chartData.length - 1)) * (width - padding * 2) + padding;
+                         const normalizedValue = (Number(d[dataKey]) - min) / range;
+                         const y = height - (normalizedValue * (height - padding * 2) + padding);
+                         return (
+                             <g key={i} className="group">
+                                <circle cx={x} cy={y} r="1.5" fill={color} className="transition-all group-hover:r-2" vectorEffect="non-scaling-stroke" />
+                                {/* Tooltip Simplificado (aparece no hover do ponto) */}
+                                <foreignObject x={x - 10} y={y - 15} width="20" height="20" className="opacity-0 group-hover:opacity-100 transition-opacity overflow-visible">
+                                    <div className="bg-slate-900 text-white text-[8px] px-1 py-0.5 rounded border border-slate-700 whitespace-nowrap -ml-2 -mt-2">
+                                        {Number(d[dataKey])}{suffix}
+                                    </div>
+                                </foreignObject>
+                             </g>
+                         );
+                     })}
+                 </svg>
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] text-slate-500 font-mono">
+                <span>{new Date(chartData[0].date).toLocaleDateString('pt-BR')}</span>
+                <span>{new Date(chartData[chartData.length - 1].date).toLocaleDateString('pt-BR')}</span>
+            </div>
+        </div>
+    );
+};
+
+// 2. Linha da Tabela com lógica de cor
+const IndicatorRow = ({ label, current, prev, initial, invert }: any) => {
+    if (!current) return null;
+
+    const diffPrev = prev !== undefined ? current - prev : 0;
+    const diffTotal = initial !== undefined ? current - initial : 0;
+
+    const renderDiff = (val: number, isTotal: boolean) => {
+        if (val === 0) return <span className="text-slate-600">-</span>;
+        
+        const isGood = invert ? val > 0 : val < 0;
+        const color = isGood ? "text-primary" : "text-slate-500"; 
+        
+        return (
+            <span className={`${color} font-bold text-xs`}>
+                {val > 0 ? '+' : ''}{val.toFixed(1)}
+            </span>
+        );
+    };
+
+    return (
+        <tr className="hover:bg-slate-800/30 transition-colors">
+            <td className="px-6 py-4 font-medium text-white">{label}</td>
+            <td className="px-6 py-4 text-center font-bold font-mono text-lg">{current}</td>
+            <td className="px-6 py-4 text-center">
+                {prev !== undefined ? renderDiff(diffPrev, false) : <span className="text-slate-600 text-xs">-</span>}
+            </td>
+            <td className="px-6 py-4 text-center">
+                {initial && initial !== current ? renderDiff(diffTotal, true) : <span className="text-slate-600 text-xs">Marco Zero</span>}
+            </td>
+        </tr>
+    );
+};
+
+export default StudentAssessment;
