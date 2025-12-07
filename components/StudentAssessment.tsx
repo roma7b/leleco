@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, TrendingDown, TrendingUp, Minus, Calendar, Trophy, Target, Dumbbell, Utensils, Brain, Quote, ArrowRight, Star, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { Activity, TrendingDown, TrendingUp, Minus, Calendar, Trophy, CheckCircle2, Brain } from 'lucide-react';
 import { Assessment, User } from '../types';
 import { fetchAssessments } from '../services/db';
 
@@ -11,6 +11,7 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({ user }) => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // EFEITO: Container Logic para buscar dados do Supabase ao carregar
   useEffect(() => {
       if (user.studentId) {
           fetchAssessments(user.studentId).then(data => {
@@ -46,7 +47,7 @@ const StudentAssessment: React.FC<StudentAssessmentProps> = ({ user }) => {
   const current = assessments[0]; // Última
   const previous = assessments[1]; // Penúltima
 
-  // Parser do Relatório IA
+  // Parser do Relatório IA (Já salvo no banco pelo Personal)
   const parseAIReport = (jsonString: string | undefined) => {
       if (!jsonString) return null;
       try {

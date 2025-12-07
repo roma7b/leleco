@@ -223,6 +223,9 @@ const AppContent = () => {
           />
         ) : null;
       case 'ASSESSMENTS':
+        // ROTEAMENTO INTELIGENTE DA AVALIAÇÃO
+        // Se for Personal: Vê a tela de Criação/Edição
+        // Se for Aluno: Vê a tela de "Minha Avaliação" (StudentAssessment)
         return isTrainer 
             ? <PtAvaliacaoCorporal students={students} />
             : <StudentAssessment user={user} />;

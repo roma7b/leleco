@@ -13,13 +13,7 @@
     "react-dom": "^18.2.0",
     "lucide-react": "^0.344.0",
     "@google/genai": "latest",
-    "@supabase/supabase-js": "^2.39.0",
-
-    // <--- NOVAS DEPENDÊNCIAS PARA GRÁFICOS (Chart.js)
-    "chart.js": "^4.4.2", 
-    "react-chartjs-2": "^5.2.0"
-    // FIM das NOVAS DEPENDÊNCIAS --->
-
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
