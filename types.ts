@@ -44,7 +44,7 @@ export interface Assessment {
   fatCalculationMethod?: string;
   tmbFormula?: string;
 
-  // Medidas
+  // Medidas (Perimetria)
   chest?: number;
   arms?: number;
   waist?: number;
@@ -52,6 +52,15 @@ export interface Assessment {
   hips?: number;
   thighs?: number;
   calves?: number;
+  
+  // NOVOS CAMPOS: DOBRAS CUTÂNEAS (SF = Skin Fold)
+  sf_chest?: number;
+  sf_axillary?: number;
+  sf_triceps?: number;
+  sf_subscapular?: number;
+  sf_abdominal?: number;
+  sf_suprailiac?: number;
+  sf_thigh?: number;
 
   // IA Reports
   strategicReport?: string;
