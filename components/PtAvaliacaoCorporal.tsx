@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, Info, Calendar, ChevronRight, History } from 'lucide-react';
+import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, History, Target, Layers, Calendar, ChevronRight } from 'lucide-react';
 import { Student, Assessment } from '../types';
 import { createAssessment, fetchAssessments } from '../services/db';
 import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
@@ -36,6 +36,8 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     muscleMass: '',
     visceralFat: '',
     metabolicAge: '',
+    
+    // Perimetria
     chest: '',
     arms: '',
     waist: '',
@@ -43,6 +45,17 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     hips: '',
     thighs: '',
     calves: '',
+
+    // Dobras Cutâneas (mm) - Novo objeto aninhado
+    skinFolds: {
+        chest: '',       // Peitoral
+        axillary: '',    // Axilar Média
+        triceps: '',     // Tricipital
+        subscapular: '', // Subescapular
+        abdominal: '',   // Abdominal
+        suprailiac: '',  // Supra-ilíaca
+        thigh: ''        // Coxa
+    }
   });
 
   const [aiReportStrategic, setAiReportStrategic] = useState<string>('');
@@ -80,6 +93,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
         age: '', height: '', imc: '',
         weight: '', bodyFat: '', muscleMass: '', visceralFat: '', metabolicAge: '',
         chest: '', arms: '', waist: '', abdomen: '', hips: '', thighs: '', calves: '',
+        skinFolds: { chest: '', axillary: '', triceps: '', subscapular: '', abdominal: '', suprailiac: '', thigh: '' }
     });
     setAiReportStrategic('');
     setAiReportMotivational('');
@@ -115,6 +129,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
         hips: assessment.hips?.toString() || '',
         thighs: assessment.thighs?.toString() || '',
         calves: assessment.calves?.toString() || '',
+        skinFolds: { chest: '', axillary: '', triceps: '', subscapular: '', abdominal: '', suprailiac: '', thigh: '' } // TODO: Adicionar campos de dobras no banco se necessário futuramente
     });
     setAiReportStrategic(assessment.strategicReport || '');
     setAiReportMotivational(assessment.motivationalReport || '');
@@ -142,7 +157,8 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
     const metodologia = {
         metodo_gordura: formData.fatCalculationMethod,
-        formula_tmb: formData.tmbFormula
+        formula_tmb: formData.tmbFormula,
+        dobras_cutaneas_mm: formData.fatCalculationMethod === 'Dobras' ? formData.skinFolds : 'Não aplicável (Bioimpedância)'
     };
 
     try {
@@ -373,7 +389,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 </div>
             </div>
 
-            {/* Medidas */}
+            {/* Medidas (Perimetria) */}
             <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                     <Ruler size={20} className="text-yellow-400" /> Perimetria (cm)
@@ -388,6 +404,52 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                     <InputGroup label="Panturrilha" value={formData.calves} onChange={(v) => setFormData({...formData, calves: v})} />
                 </div>
             </div>
+
+            {/* DOBRAS CUTÂNEAS (Renderização Condicional) */}
+            {formData.fatCalculationMethod === 'Dobras' && (
+                <div className="bg-surface border border-slate-800 p-6 rounded-2xl animate-slideUp">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <Layers size={20} className="text-red-400" /> Dobras Cutâneas (mm)
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <InputGroup 
+                            label="Peitoral" 
+                            value={formData.skinFolds.chest} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, chest: v}})} 
+                        />
+                        <InputGroup 
+                            label="Axilar Média" 
+                            value={formData.skinFolds.axillary} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, axillary: v}})} 
+                        />
+                        <InputGroup 
+                            label="Tricipital" 
+                            value={formData.skinFolds.triceps} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, triceps: v}})} 
+                        />
+                        <InputGroup 
+                            label="Subescapular" 
+                            value={formData.skinFolds.subscapular} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, subscapular: v}})} 
+                        />
+                        <InputGroup 
+                            label="Abdominal" 
+                            value={formData.skinFolds.abdominal} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, abdominal: v}})} 
+                        />
+                        <InputGroup 
+                            label="Supra-ilíaca" 
+                            value={formData.skinFolds.suprailiac} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, suprailiac: v}})} 
+                        />
+                        <InputGroup 
+                            label="Coxa" 
+                            value={formData.skinFolds.thigh} 
+                            onChange={(v) => setFormData({...formData, skinFolds: {...formData.skinFolds, thigh: v}})} 
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Botão Ação */}
             <div className="flex gap-4">
