@@ -1,4 +1,3 @@
-
 export interface PredefinedExercise {
   name: string;
   videoUrl: string;

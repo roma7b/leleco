@@ -1,4 +1,3 @@
-
 import { supabase } from './supabase';
 import { Student, WorkoutPlan, PaymentStatus, Assessment } from '../types';
 
@@ -147,11 +146,21 @@ export const fetchAssessments = async (studentId?: string): Promise<Assessment[]
     id: a.id,
     studentId: a.student_id,
     date: a.date,
+    
+    // Biometria
+    age: a.age,
+    height: a.height,
+    imc: a.imc,
+    fatCalculationMethod: a.fat_method,
+    tmbFormula: a.tmb_method,
+
     weight: a.weight,
     bodyFat: a.body_fat,
     muscleMass: a.muscle_mass,
     visceralFat: a.visceral_fat,
     metabolicAge: a.metabolic_age,
+    
+    // Medidas
     chest: a.chest,
     arms: a.arms,
     waist: a.waist,
@@ -159,6 +168,8 @@ export const fetchAssessments = async (studentId?: string): Promise<Assessment[]
     hips: a.hips,
     thighs: a.thighs,
     calves: a.calves,
+    
+    // IA
     strategicReport: a.strategic_report,
     motivationalReport: a.motivational_report
   }));
@@ -171,6 +182,14 @@ export const createAssessment = async (assessment: Assessment): Promise<Assessme
       {
         student_id: assessment.studentId,
         date: assessment.date,
+        
+        // Mapeando novos campos para snake_case do banco
+        age: assessment.age,
+        height: assessment.height,
+        imc: assessment.imc,
+        fat_method: assessment.fatCalculationMethod,
+        tmb_method: assessment.tmbFormula,
+
         weight: assessment.weight,
         body_fat: assessment.bodyFat,
         muscle_mass: assessment.muscleMass,
@@ -191,7 +210,8 @@ export const createAssessment = async (assessment: Assessment): Promise<Assessme
     .single();
 
   if (error) {
-    console.error('Erro ao salvar avaliação:', error);
+    alert(`Erro ao salvar no banco: ${error.message} (${error.details})`);
+    console.error('Erro detalhado ao salvar avaliação:', error.message, error.details);
     return null;
   }
 

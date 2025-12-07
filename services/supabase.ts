@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Tenta acessar variáveis de ambiente de forma segura

@@ -83,11 +83,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Email</label>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Email / Login</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3.5 text-slate-500" size={18} />
                   <input 
-                    type="email" 
+                    type="text" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com"

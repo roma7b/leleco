@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit, Lock } from 'lucide-react';
 import { PaymentStatus, Student } from '../types';

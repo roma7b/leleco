@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, Circle, Play, Video, ExternalLink, Info, Timer, X, Trophy, Share2, Home } from 'lucide-react';
 import { WorkoutPlan, Exercise } from '../types';

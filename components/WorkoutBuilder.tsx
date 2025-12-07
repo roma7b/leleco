@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, Video, Dumbbell, Calendar, Check } from 'lucide-react';
 import { Student, Exercise, WorkoutSession, WorkoutPlan } from '../types';

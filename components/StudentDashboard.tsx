@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PlayCircle, Calendar, CheckCircle2, Clock, ChevronRight, Trophy, Sparkles, ArrowUpRight, LayoutGrid, CalendarDays } from 'lucide-react';
 import { User, WorkoutPlan, PaymentStatus, Student } from '../types';

@@ -1,4 +1,3 @@
-
 /**
  * SUPABASE SQL SCHEMA DEFINITION
  * 
@@ -32,6 +31,14 @@ create table public.assessments (
   id uuid default gen_random_uuid() primary key,
   student_id uuid references public.students(id) on delete cascade,
   date date not null,
+  
+  -- Biometria e Metodologia
+  age numeric,
+  height numeric,
+  imc numeric,
+  fat_method text,
+  tmb_method text,
+
   weight numeric,
   body_fat numeric,
   muscle_mass numeric,

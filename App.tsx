@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles, ClipboardList, Activity } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -84,7 +83,10 @@ const AppContent = () => {
   const handleLogin = async (email: string, password: string, role: UserRole) => {
     // 1. Login do Treinador
     if (role === 'TRAINER') {
-      if (email === 'lelecocoradini@personal.com' && password === 'titanfit2026') {
+      const isOfficialLogin = email === 'lelecocoradini@personal.com' && password === 'titanfit2026';
+      const isTestLogin = email === 'admin' && password === 'admin';
+
+      if (isOfficialLogin || isTestLogin) {
         setUser({
           id: 'trainer-1',
           name: 'Leleco Coradini',
@@ -95,7 +97,7 @@ const AppContent = () => {
         setActiveView('DASHBOARD');
         showToast('Login de Personal realizado com sucesso!', 'success');
       } else {
-        showToast('Email ou senha de Personal incorretos.', 'error');
+        showToast('Credenciais de Personal incorretas.', 'error');
       }
       return;
     } 

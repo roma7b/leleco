@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Users, Activity, AlertCircle, CheckSquare, ArrowRight, TrendingUp, Sparkles } from 'lucide-react';
 import { MOCK_STUDENTS, MOCK_WORKOUTS } from '../services/mockData';

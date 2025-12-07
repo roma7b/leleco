@@ -1,4 +1,3 @@
-
 export enum PaymentStatus {
   PAID = 'Pago',
   LATE = 'Atrasado',
@@ -38,6 +37,13 @@ export interface Assessment {
   visceralFat: number;
   metabolicAge: number;
   
+  // Novos campos para biometria e metodologia
+  age?: number;
+  height?: number;
+  imc?: number;
+  fatCalculationMethod?: string;
+  tmbFormula?: string;
+
   // Medidas
   chest?: number;
   arms?: number;
