@@ -1,6 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// CORREÇÃO DE SEGURANÇA E INICIALIZAÇÃO:
+// Lemos a variável de ambiente com o prefixo REACT_APP_
+const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+
+// Usamos uma chave placeholder se a chave real for indefinida, 
+// o que impede que o aplicativo quebre na inicialização (Tela Azul).
+const safeApiKey = apiKey || 'PLACEHOLDER_KEY_PARA_EVITAR_CRASH';
+
+const ai = new GoogleGenAI({ apiKey: safeApiKey });
 
 /**
  * Gera um relatório estratégico de evolução corporal em formato JSON.
@@ -9,21 +17,36 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @returns String JSON estruturada com a análise.
  */
 export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia?: any): Promise<string | null> => {
-  try {
-    // Combina os dados da avaliação com a metodologia para o prompt
-    const dadosCompletos = {
-      ...dadosAvaliacao,
-      metodologia_aplicada: metodologia || "Não especificada (Assumir padrão padrão ouro ou comentar sobre falta de dados)"
-    };
+    // Se a chave for placeholder, pulamos a chamada à API para evitar custos
+    if (safeApiKey === 'PLACEHOLDER_KEY_PARA_EVITAR_CRASH') {
+        console.error("ERRO: Chave da API Gemini ausente. O relatório IA não será gerado.");
+        return JSON.stringify({
+             "diagnostico_estrategico": {
+                 "risco_principal": "FALHA DE CONEXÃO: Chave API ausente no Netlify",
+                 "justificativa_completa": "A variável de ambiente 'REACT_APP_GEMINI_API_KEY' não está sendo lida corretamente. Corrija o nome no Netlify.",
+                 "analise_metodologia": "Verifique a documentação do seu 'bundler' (Vite, Webpack, etc.) para garantir que as variáveis de ambiente com 'REACT_APP_' sejam injetadas no cliente."
+             },
+             "resumo_evolucao_texto": { "eficacia_estrategia": "", "destaque_progresso": "","ponto_alerta": "" },
+             "plano_ajuste_proxima_fase": [],
+             "anotacoes_aluno_sugeridas": "Corrija a variável de ambiente para liberar a análise estratégica."
+        });
+    }
 
-    const inputData = JSON.stringify(dadosCompletos, null, 2);
+    try {
+        // Combina os dados da avaliação com a metodologia para o prompt
+        const dadosCompletos = {
+            ...dadosAvaliacao,
+            metodologia_aplicada: metodologia || "Não especificada (Assumir padrão padrão ouro ou comentar sobre falta de dados)"
+        };
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Modelo de alta capacidade para raciocínio complexo
-      config: {
-        temperature: 0.3, // Baixa temperatura para precisão técnica
-        responseMimeType: 'application/json', // Força saída JSON
-        systemInstruction: `# INSTRUÇÃO DO SISTEMA: Analista Estratégico de Evolução Corporal
+        const inputData = JSON.stringify(dadosCompletos, null, 2);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview', // Modelo de alta capacidade para raciocínio complexo
+            config: {
+                temperature: 0.3, // Baixa temperatura para precisão técnica
+                responseMimeType: 'application/json', // Força saída JSON
+                systemInstruction: `# INSTRUÇÃO DO SISTEMA: Analista Estratégico de Evolução Corporal
 
 ## 1. PAPEL E OBJETIVO
 Você é um **Cientista de Dados de Saúde e Estrategista de Treinamento**. Sua função é analisar a avaliação corporal do cliente, validar a metodologia usada e gerar um plano tático.
@@ -54,15 +77,15 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
 * **Análise de Metodologia:** Se o aluno for obeso e usarem dobras cutâneas, alerte sobre imprecisão. Se for atleta e usarem Mifflin-St Jeor, alerte sobre subestimação calórica.
 * **Idade Corporal:** Use a diferença entre idade cronológica e metabólica como indicador chave de saúde.
 `,
-      },
-      contents: inputData,
-    });
+            },
+            contents: inputData,
+        });
 
-    return response.text || null;
-  } catch (error) {
-    console.error("Erro ao gerar relatório estratégico:", error);
-    return null;
-  }
+        return response.text || null;
+    } catch (error) {
+        console.error("Erro ao gerar relatório estratégico:", error);
+        return null;
+    }
 };
 
 /**
@@ -71,18 +94,30 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
  * @returns String JSON estruturada.
  */
 export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<string | null> => {
-  try {
-    const inputData = typeof dadosAvaliacao === 'string' 
-      ? dadosAvaliacao 
-      : JSON.stringify(dadosAvaliacao, null, 2);
+    if (safeApiKey === 'PLACEHOLDER_KEY_PARA_EVITAR_CRASH') {
+         console.error("ERRO: Chave da API Gemini ausente. O relatório motivacional não será gerado.");
+         // Retorna um JSON de fallback para o aluno ver a tela renderizada.
+         return JSON.stringify({
+            "titulo_motivacional": "Alerta de Sistema!",
+            "conquistas_recentes": "O sistema de IA está offline temporariamente. Seu treinador será notificado. Por favor, avise seu Personal Trainer que ele precisa corrigir a variável de ambiente no Netlify.",
+            "foco_principal_traduzido": "Foco: Correção de Erro",
+            "objetivos_proxima_fase": [ { "area": "Sistema", "acao": "Aguardar correção do Personal" }, { "area": "Comunicação", "acao": "Enviar mensagem ao Personal" } ],
+            "mensagem_final": "Seu Personal Trainer irá corrigir o acesso ao nosso motor de IA em breve!"
+         });
+    }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Equivalente Pro atualizado
-      config: {
-        temperature: 0.7, // Mais criativo e humano
-        responseMimeType: 'application/json', // Força saída JSON
-        systemInstruction: `# INSTRUÇÃO DO SISTEMA: Comunicador de Evolução e Motivação (Foco no Cliente)
+    try {
+        const inputData = typeof dadosAvaliacao === 'string' 
+            ? dadosAvaliacao 
+            : JSON.stringify(dadosAvaliacao, null, 2);
 
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview', // Equivalente Pro atualizado
+            config: {
+                temperature: 0.7, // Mais criativo e humano
+                responseMimeType: 'application/json', // Força saída JSON
+                systemInstruction: `# INSTRUÇÃO DO SISTEMA: Comunicador de Evolução e Motivação (Foco no Cliente)
+// ... (Instruções da IA Motovacional)
 ## 1. PAPEL E OBJETIVO
 Você é um **Coach Motivacional e Educador de Saúde** empático. Seu objetivo é traduzir a avaliação corporal técnica em uma mensagem clara, inspiradora e acionável para o aluno, focando no que ele precisa saber para agir.
 
@@ -105,13 +140,13 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown. Siga estri
 * **PROIBIDO JARGÃO TÉCNICO:** NÃO use termos como: Obesidade Sarcopênica, Tensão Mecânica, NEAT, Catabolismo, Hipertrofia Miofibrilar.
 * **Tom de Voz:** Encorajador, positivo, parceiro.
 * **Foco:** Traduza números em benefícios reais de saúde e estética.`,
-      },
-      contents: inputData,
-    });
+            },
+            contents: inputData,
+        });
 
-    return response.text || null;
-  } catch (error) {
-    console.error("Erro ao gerar relatório motivacional:", error);
-    return null;
-  }
+        return response.text || null;
+    } catch (error) {
+        console.error("Erro ao gerar relatório motivacional:", error);
+        return null;
+    }
 };
