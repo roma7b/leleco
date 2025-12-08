@@ -3,10 +3,13 @@ import { Student, WorkoutPlan, PaymentStatus, Assessment } from '../types';
 
 // --- ALUNOS ---
 
-export const fetchStudents = async (): Promise<Student[]> => {
+export const fetchStudents = async (trainerId: string): Promise<Student[]> => {
+  if (!trainerId) return [];
+
   const { data, error } = await supabase
     .from('students')
     .select('*')
+    .eq('trainer_id', trainerId) // Filtra pelo Treinador Logado
     .order('name');
 
   if (error) {
@@ -27,11 +30,12 @@ export const fetchStudents = async (): Promise<Student[]> => {
   }));
 };
 
-export const createStudent = async (student: Student): Promise<Student | null> => {
+export const createStudent = async (student: Student, trainerId: string): Promise<Student | null> => {
   const { data, error } = await supabase
     .from('students')
     .insert([
       {
+        trainer_id: trainerId, // Vincula ao Treinador
         name: student.name,
         email: student.email,
         avatar_url: student.avatarUrl,
@@ -82,10 +86,13 @@ export const updateStudent = async (student: Student): Promise<boolean> => {
 
 // --- TREINOS ---
 
-export const fetchWorkouts = async (): Promise<WorkoutPlan[]> => {
+export const fetchWorkouts = async (trainerId: string): Promise<WorkoutPlan[]> => {
+  if (!trainerId) return [];
+
   const { data, error } = await supabase
     .from('workouts')
-    .select('*');
+    .select('*')
+    .eq('trainer_id', trainerId); // Filtra pelo Treinador
 
   if (error) {
     console.error('Erro ao buscar treinos:', error);
@@ -101,11 +108,12 @@ export const fetchWorkouts = async (): Promise<WorkoutPlan[]> => {
   }));
 };
 
-export const createWorkout = async (workout: WorkoutPlan): Promise<WorkoutPlan | null> => {
+export const createWorkout = async (workout: WorkoutPlan, trainerId: string): Promise<WorkoutPlan | null> => {
   const { data, error } = await supabase
     .from('workouts')
     .insert([
       {
+        trainer_id: trainerId, // Vincula ao Treinador
         student_id: workout.studentId,
         title: workout.title,
         content: workout.sessions, 
@@ -128,11 +136,19 @@ export const createWorkout = async (workout: WorkoutPlan): Promise<WorkoutPlan |
 
 // --- AVALIAÇÕES ---
 
-export const fetchAssessments = async (studentId?: string): Promise<Assessment[]> => {
+export const fetchAssessments = async (studentId?: string, trainerId?: string): Promise<Assessment[]> => {
   let query = supabase.from('assessments').select('*').order('date', { ascending: false });
   
+  // Se tiver studentId, foca nele (Prioridade para visão do aluno ou detalhe do aluno)
   if (studentId) {
     query = query.eq('student_id', studentId);
+  } 
+  // Se não tiver studentId mas tiver trainerId, pega todas do treinador (Visão Dashboard Geral)
+  else if (trainerId) {
+    query = query.eq('trainer_id', trainerId);
+  } else {
+    // Se não passar nenhum, retorna vazio por segurança em multi-tenant
+    return [];
   }
 
   const { data, error } = await query;
@@ -175,11 +191,12 @@ export const fetchAssessments = async (studentId?: string): Promise<Assessment[]
   }));
 };
 
-export const createAssessment = async (assessment: Assessment): Promise<Assessment | null> => {
+export const createAssessment = async (assessment: Assessment, trainerId: string): Promise<Assessment | null> => {
   const { data, error } = await supabase
     .from('assessments')
     .insert([
       {
+        trainer_id: trainerId, // Vincula ao Treinador
         student_id: assessment.studentId,
         date: assessment.date,
         
@@ -210,7 +227,10 @@ export const createAssessment = async (assessment: Assessment): Promise<Assessme
     .single();
 
   if (error) {
-    alert(`Erro ao salvar no banco: ${error.message} (${error.details})`);
+    // Alerta visual se estiver no navegador
+    if (typeof window !== 'undefined') {
+        alert(`Erro ao salvar no banco: ${error.message} (${error.details})`);
+    }
     console.error('Erro detalhado ao salvar avaliação:', error.message, error.details);
     return null;
   }

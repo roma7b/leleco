@@ -16,6 +16,8 @@ import { ToastProvider, useToast } from './components/ToastContext';
 // Import DB Services
 import { fetchStudents, createStudent, updateStudent, fetchWorkouts, createWorkout } from './services/db';
 
+const DEFAULT_TRAINER_ID = 'trainer-1';
+
 // Componente Wrapper para usar o Toast dentro do App logic
 const AppContent = () => {
   const { showToast } = useToast();
@@ -35,10 +37,12 @@ const AppContent = () => {
 
   // --- CARREGAR DADOS DO SUPABASE ---
   const loadData = async () => {
+    if (!user) return;
     setIsLoadingData(true);
     try {
-      const loadedStudents = await fetchStudents();
-      const loadedWorkouts = await fetchWorkouts();
+      const currentTrainerId = user.role === 'TRAINER' ? user.id : DEFAULT_TRAINER_ID;
+      const loadedStudents = await fetchStudents(currentTrainerId);
+      const loadedWorkouts = await fetchWorkouts(currentTrainerId);
       setStudents(loadedStudents);
       setWorkouts(loadedWorkouts);
     } catch (error) {
@@ -57,7 +61,8 @@ const AppContent = () => {
 
   // Handle Add Student (Supabase)
   const handleAddStudent = async (newStudent: Student) => {
-    const savedStudent = await createStudent(newStudent);
+    if (!user || user.role !== 'TRAINER') return;
+    const savedStudent = await createStudent(newStudent, user.id);
     
     if (savedStudent) {
         setStudents(prev => [...prev, savedStudent]);
@@ -88,7 +93,7 @@ const AppContent = () => {
 
       if (isOfficialLogin || isTestLogin) {
         setUser({
-          id: 'trainer-1',
+          id: DEFAULT_TRAINER_ID,
           name: 'Leleco Coradini',
           email,
           role: 'TRAINER',
@@ -103,7 +108,7 @@ const AppContent = () => {
     } 
     
     // 2. Login do Aluno (Com verificação de senha do banco)
-    const allStudents = await fetchStudents();
+    const allStudents = await fetchStudents(DEFAULT_TRAINER_ID);
     const foundStudent = allStudents.find(s => s.email === email);
 
     if (foundStudent) {
@@ -118,7 +123,7 @@ const AppContent = () => {
                 avatarUrl: foundStudent.avatarUrl
             });
             setStudents(allStudents);
-            fetchWorkouts().then(w => setWorkouts(w));
+            fetchWorkouts(DEFAULT_TRAINER_ID).then(w => setWorkouts(w));
             
             setActiveView('DASHBOARD');
             showToast(`Bem-vindo, ${foundStudent.name}!`, 'success');
@@ -177,7 +182,8 @@ const AppContent = () => {
   };
 
   const handleSaveNewWorkout = async (workout: WorkoutPlan) => {
-      const savedWorkout = await createWorkout(workout);
+      if (!user || user.role !== 'TRAINER') return;
+      const savedWorkout = await createWorkout(workout, user.id);
       if (savedWorkout) {
           setWorkouts(prev => [...prev, savedWorkout]);
           handleBack();
@@ -227,7 +233,7 @@ const AppContent = () => {
         // Se for Personal: Vê a tela de Criação/Edição
         // Se for Aluno: Vê a tela de "Minha Avaliação" (StudentAssessment)
         return isTrainer 
-            ? <PtAvaliacaoCorporal students={students} />
+            ? <PtAvaliacaoCorporal students={students} trainerId={user.id} />
             : <StudentAssessment user={user} />;
       case 'FINANCE':
         return isTrainer ? <Finance students={students} /> : null;
