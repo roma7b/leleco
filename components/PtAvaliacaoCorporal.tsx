@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, History, Target, Layers, Calendar, ChevronRight } from 'lucide-react';
+import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, History, Layers, Calendar, ChevronRight } from 'lucide-react';
 import { Student, Assessment } from '../types';
 import { createAssessment, fetchAssessments } from '../services/db';
 import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
@@ -46,9 +46,10 @@ const InputGroup = ({ label, value, onChange }: { label: string, value: string, 
 
 interface PtAvaliacaoCorporalProps {
     students: Student[];
+    trainerId: string; // Adicionado para suporte Multi-Tenant
 }
 
-const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) => {
+const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, trainerId }) => {
     const { showToast } = useToast();
     const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
     const [loading, setLoading] = useState(false);
@@ -127,7 +128,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     // --- LÓGICA DE CÁLCULO DE GORDURA (POLLOCK 7-SITE) ---
 
     const calculateBodyFat = (folds: typeof formData.skinFolds, gender: string, age: number): string | null => {
-        const foldValues = Object.values(folds).map(v => parseFloat(v || '0'));
+        const foldValues = Object.values(folds).map((v) => parseFloat((v as string) || '0'));
         
         const sumOfFolds = foldValues.reduce((sum, val) => sum + val, 0);
         if (sumOfFolds <= 0 || age <= 0) return null;
@@ -161,7 +162,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                 setFormData(prev => ({ ...prev, bodyFat: '' }));
             }
         }
-        // Se o método for diferente de Dobras, o PT deve preencher bodyFatManually
         
     }, [formData.skinFolds, formData.gender, formData.age, formData.fatCalculationMethod]);
 
@@ -182,6 +182,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     };
 
     const loadHistory = async (id: string) => {
+        // Agora passando trainerId para garantir segurança, embora o select de aluno já filtre
         const data = await fetchAssessments(id);
         setHistory(data);
         if (data.length > 0) {
@@ -215,8 +216,8 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
             calves: assessment.calves?.toString() || '',
             // Carregamento dos dados de Dobras
             skinFolds: { 
-                chest: assessment.sf_chest?.toString() || '',
-                axillary: assessment.sf_axillary?.toString() || '',
+                chest: assessment.sf_chest?.toString() || '', 
+                axillary: assessment.sf_axillary?.toString() || '', 
                 triceps: assessment.sf_triceps?.toString() || '',
                 subscapular: assessment.sf_subscapular?.toString() || '',
                 abdominal: assessment.sf_abdominal?.toString() || '',
@@ -335,7 +336,9 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
             motivationalReport: aiReportMotivational
         };
 
-        const saved = await createAssessment(newAssessment);
+        // CORREÇÃO: Passando trainerId para a função de banco de dados
+        const saved = await createAssessment(newAssessment, trainerId);
+        
         if (saved) {
             showToast('Avaliação salva com sucesso!', 'success');
             loadHistory(selectedStudentId);
@@ -498,7 +501,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
                             {formData.fatCalculationMethod === 'Dobras' ? (
                                 <InputGroup label="Gordura (%) (Auto)" value={formData.bodyFat} onChange={() => {}} />
                             ) : (
-                                <InputGroup label="Gordura (%)" value={formData.bodyFat} onChange={(v) => setFormData({...formData, bodyFat: v})} />
+                                <InputGroup label="Gordura (%)" value={formData.bodyFatManual} onChange={(v) => setFormData({...formData, bodyFatManual: v})} />
                             )}
                             
                             <InputGroup label="Músculo (%)" value={formData.muscleMass} onChange={(v) => setFormData({...formData, muscleMass: v})} />

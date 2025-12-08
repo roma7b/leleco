@@ -49,6 +49,10 @@ export const createStudent = async (student: Student, trainerId: string): Promis
     .single();
 
   if (error) {
+    // Tratamento de erro visual
+    if (typeof window !== 'undefined') {
+        alert(`Erro ao criar aluno: ${error.message} (${error.details || 'Sem detalhes'})`);
+    }
     console.error('Erro ao criar aluno:', error);
     return null;
   }
@@ -79,6 +83,7 @@ export const updateStudent = async (student: Student): Promise<boolean> => {
 
   if (error) {
     console.error('Erro ao atualizar aluno:', error);
+    if (typeof window !== 'undefined') alert(`Erro ao atualizar: ${error.message}`);
     return false;
   }
   return true;
@@ -124,6 +129,9 @@ export const createWorkout = async (workout: WorkoutPlan, trainerId: string): Pr
     .single();
 
   if (error) {
+    if (typeof window !== 'undefined') {
+        alert(`Erro ao salvar treino: ${error.message}`);
+    }
     console.error('Erro ao salvar treino:', error);
     return null;
   }
@@ -185,6 +193,17 @@ export const fetchAssessments = async (studentId?: string, trainerId?: string): 
     thighs: a.thighs,
     calves: a.calves,
     
+    // Dobras (Mapeando do banco sf_ para o objeto TypeScript, se necessário, ou campos diretos)
+    // O tipo Assessment no types.ts precisa refletir isso se formos usar na UI
+    // Por enquanto, assumimos que o createAssessment está salvando e aqui estamos lendo o básico
+    sf_chest: a.sf_chest,
+    sf_axillary: a.sf_axillary,
+    sf_triceps: a.sf_triceps,
+    sf_subscapular: a.sf_subscapular,
+    sf_abdominal: a.sf_abdominal,
+    sf_suprailiac: a.sf_suprailiac,
+    sf_thigh: a.sf_thigh,
+
     // IA
     strategicReport: a.strategic_report,
     motivationalReport: a.motivational_report
@@ -212,6 +231,7 @@ export const createAssessment = async (assessment: Assessment, trainerId: string
         muscle_mass: assessment.muscleMass,
         visceral_fat: assessment.visceralFat,
         metabolic_age: assessment.metabolicAge,
+        
         chest: assessment.chest,
         arms: assessment.arms,
         waist: assessment.waist,
@@ -219,6 +239,16 @@ export const createAssessment = async (assessment: Assessment, trainerId: string
         hips: assessment.hips,
         thighs: assessment.thighs,
         calves: assessment.calves,
+
+        // Dobras
+        sf_chest: assessment.sf_chest,
+        sf_axillary: assessment.sf_axillary,
+        sf_triceps: assessment.sf_triceps,
+        sf_subscapular: assessment.sf_subscapular,
+        sf_abdominal: assessment.sf_abdominal,
+        sf_suprailiac: assessment.sf_suprailiac,
+        sf_thigh: assessment.sf_thigh,
+
         strategic_report: assessment.strategicReport,
         motivational_report: assessment.motivationalReport
       },
@@ -227,11 +257,10 @@ export const createAssessment = async (assessment: Assessment, trainerId: string
     .single();
 
   if (error) {
-    // Alerta visual se estiver no navegador
     if (typeof window !== 'undefined') {
-        alert(`Erro ao salvar no banco: ${error.message} (${error.details})`);
+        alert(`Erro ao salvar avaliação: ${error.message} (${error.details || 'Verifique colunas no banco'})`);
     }
-    console.error('Erro detalhado ao salvar avaliação:', error.message, error.details);
+    console.error('Erro detalhado ao salvar avaliação:', error);
     return null;
   }
 

@@ -53,6 +53,15 @@ export interface Assessment {
   thighs?: number;
   calves?: number;
 
+  // Dobras Cutâneas (mm)
+  sf_chest?: number;
+  sf_axillary?: number;
+  sf_triceps?: number;
+  sf_subscapular?: number;
+  sf_abdominal?: number;
+  sf_suprailiac?: number;
+  sf_thigh?: number;
+
   // IA Reports
   strategicReport?: string;
   motivationalReport?: string;
