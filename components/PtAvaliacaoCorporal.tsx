@@ -73,6 +73,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
         // Dados numéricos
         weight: '',
         bodyFat: '', // Este será preenchido automaticamente se 'Dobras' for selecionado
+        bodyFatManual: '', // Novo campo para input manual de % Gordura, caso não use dobras
         muscleMass: '',
         visceralFat: '',
         metabolicAge: '',
@@ -100,7 +101,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
     const [aiReportStrategic, setAiReportStrategic] = useState<string>('');
     const [aiReportMotivational, setAiReportMotivational] = useState<string>('');
-    const [showDobrasAlert, setShowDobrasAlert] = useState(false);
 
     // EFEITO 1: Carregar histórico ao mudar de aluno
     useEffect(() => {
@@ -127,72 +127,43 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     // --- LÓGICA DE CÁLCULO DE GORDURA (POLLOCK 7-SITE) ---
 
     const calculateBodyFat = (folds: typeof formData.skinFolds, gender: string, age: number): string | null => {
-        if (formData.fatCalculationMethod !== 'Dobras') return null;
-
         const foldValues = Object.values(folds).map(v => parseFloat(v || '0'));
         
-        // 1. Regra Crítica: A soma total ou idade inválida não permite o cálculo.
         const sumOfFolds = foldValues.reduce((sum, val) => sum + val, 0);
         if (sumOfFolds <= 0 || age <= 0) return null;
 
-        // 2. Cálculo da Densidade Corporal (DB)
         let BD: number;
 
         if (gender === 'male') {
-             // Fórmula para homens (Jackson & Pollock)
              BD = 1.112 - (0.00043499 * sumOfFolds) + (0.00000055 * sumOfFolds * sumOfFolds) - (0.0002882 * age);
         } else {
-             // Fórmula para mulheres (Jackson & Pollock)
              BD = 1.0970 - (0.00046971 * sumOfFolds) + (0.00000056 * sumOfFolds * sumOfFolds) - (0.00012828 * age);
         }
 
-        // 3. Conversão da Densidade Corporal para % Gordura (Fórmula de Siri)
         const percentFat = ((4.95 / BD) - 4.50) * 100;
 
-        // Verifica se o resultado é válido (não é NaN e não é negativo)
         return (isNaN(percentFat) || percentFat < 0) ? null : percentFat.toFixed(2);
     };
 
-    // EFEITO 3: Recálculo Automático da % Gordura e Exibição do Alerta
+    // EFEITO 3: Recálculo Automático da % Gordura
     useEffect(() => {
         const ageVal = parseFloat(formData.age);
         let calculatedFat: string | null = null;
-        let requiresAllFolds = false;
-
+        
         if (formData.fatCalculationMethod === 'Dobras') {
-            const foldValues = Object.values(formData.skinFolds).map(v => parseFloat(v || '0'));
+            calculatedFat = calculateBodyFat(formData.skinFolds, formData.gender, ageVal);
             
-            // Verifica se está faltando algum campo de dobra ou a idade
-            const isAnyFoldMissing = foldValues.some(v => v <= 0) || ageVal <= 0;
-            requiresAllFolds = true;
-            
-            if (!isAnyFoldMissing) {
-                // Tenta calcular apenas se todos os dados necessários estiverem preenchidos (> 0)
-                calculatedFat = calculateBodyFat(formData.skinFolds, formData.gender, ageVal);
-                setShowDobrasAlert(false); // O cálculo foi bem-sucedido
+            // Se o cálculo for bem-sucedido, atualiza bodyFat. Senão, bodyFat fica vazio.
+            if (calculatedFat !== null) {
+                setFormData(prev => ({ ...prev, bodyFat: calculatedFat }));
             } else {
-                // Se faltar dados, limpa o campo de gordura e dispara o alerta
-                setShowDobrasAlert(true);
+                // Se o cálculo falhou (dados incompletos), limpa o campo bodyFat para evitar valor antigo
+                setFormData(prev => ({ ...prev, bodyFat: '' }));
             }
-        } else {
-            setShowDobrasAlert(false);
         }
-
-        setFormData(prev => ({ 
-            ...prev, 
-            bodyFat: (formData.fatCalculationMethod === 'Dobras' && calculatedFat !== null) ? calculatedFat : prev.bodyFat 
-        }));
-
-        // Se estiver em modo Dobras e faltar dados, mostra o Toast
-        if (requiresAllFolds && showDobrasAlert) {
-            // Garante que o alerta não seja exibido em loop, mas sim quando o foco muda
-            const timer = setTimeout(() => {
-                showToast('Para usar a fórmula Pollock 7-Site, preencha a Idade e todas as 7 Dobras Cutâneas.', 'info');
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-
-    }, [formData.skinFolds, formData.gender, formData.age, formData.fatCalculationMethod, showDobrasAlert]);
+        // Se o método for diferente de Dobras, o PT deve preencher bodyFatManually
+        
+    }, [formData.skinFolds, formData.gender, formData.age, formData.fatCalculationMethod]);
 
 
     // --- Funções de Carregamento e Limpeza ---
@@ -202,7 +173,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
             fatCalculationMethod: 'Bioimpedância',
             tmbFormula: 'Mifflin-St Jeor',
             age: '', height: '', imc: '', gender: 'male',
-            weight: '', bodyFat: '', muscleMass: '', visceralFat: '', metabolicAge: '',
+            weight: '', bodyFat: '', bodyFatManual: '', muscleMass: '', visceralFat: '', metabolicAge: '',
             chest: '', arms: '', waist: '', abdomen: '', hips: '', thighs: '', calves: '',
             skinFolds: { chest: '', axillary: '', triceps: '', subscapular: '', abdominal: '', suprailiac: '', thigh: '' }
         });
@@ -228,9 +199,10 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
             age: assessment.age?.toString() || '',
             height: assessment.height?.toString() || '',
             imc: assessment.imc?.toString() || '',
-            gender: 'male', // Assume male ou ajuste se o campo for adicionado à Assessment
+            gender: 'male', // Assumido, ou ajuste se o campo for adicionado à Assessment
             weight: assessment.weight?.toString() || '',
             bodyFat: assessment.bodyFat?.toString() || '',
+            bodyFatManual: '', // Não carregamos o campo manual aqui, o campo bodyFat já está carregado
             muscleMass: assessment.muscleMass?.toString() || '',
             visceralFat: assessment.visceralFat?.toString() || '',
             metabolicAge: assessment.metabolicAge?.toString() || '',
@@ -258,14 +230,19 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     };
 
     const handleGenerateAI = async () => {
-        if (!formData.weight || !formData.bodyFat || !formData.muscleMass) {
+        // Obter a % de gordura a ser usada (prioriza cálculo, senão manual)
+        const finalBodyFat = formData.fatCalculationMethod === 'Dobras' 
+                             ? formData.bodyFat 
+                             : formData.bodyFatManual;
+
+        if (!formData.weight || !finalBodyFat || !formData.muscleMass) {
             showToast('Preencha pelo menos Peso, Gordura e Músculo.', 'error');
             return;
         }
 
         // Alerta se o PT tentar gerar IA com o cálculo de dobras incompleto
-        if (formData.fatCalculationMethod === 'Dobras' && formData.bodyFat === '') {
-             showToast('O cálculo da Gordura (%) está incompleto! Preencha todas as 7 dobras ou mude o método.', 'warning');
+        if (formData.fatCalculationMethod === 'Dobras' && finalBodyFat === '') {
+             showToast('O cálculo da Gordura (%) está incompleto! Preencha a Idade e todas as 7 dobras, ou mude o método.', 'warning');
              return;
         }
 
@@ -274,7 +251,8 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
         const dadosAtuais = {
             data: new Date().toLocaleDateString('pt-BR'),
-            ...formData 
+            ...formData,
+            bodyFat: finalBodyFat // Garante que a IA use o valor calculado ou manual
         };
 
         const dadosCompletos = {
@@ -307,6 +285,17 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
     // Função de salvamento (Final e completa)
     const handleSave = async () => {
         if (!selectedStudentId) return;
+
+        // Obter a % de gordura a ser usada (prioriza cálculo, senão manual)
+        const finalBodyFat = formData.fatCalculationMethod === 'Dobras' 
+                             ? formData.bodyFat 
+                             : formData.bodyFatManual;
+        
+        if (!formData.weight || !finalBodyFat || !formData.muscleMass) {
+             showToast('Preencha pelo menos Peso, Gordura (%) e Músculo (%).', 'error');
+             return;
+        }
+
         setLoading(true);
 
         const newAssessment: Assessment = {
@@ -321,7 +310,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
             tmbFormula: formData.tmbFormula,
 
             weight: safeFloat(formData.weight) || 0,
-            bodyFat: safeFloat(formData.bodyFat) || 0,
+            bodyFat: safeFloat(finalBodyFat) || 0, // SALVA O VALOR CALCULADO/MANUAL
             muscleMass: safeFloat(formData.muscleMass) || 0,
             visceralFat: safeFloat(formData.visceralFat),
             metabolicAge: safeFloat(formData.metabolicAge),
@@ -504,7 +493,14 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students }) =
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <InputGroup label="Peso (kg)" value={formData.weight} onChange={(v) => setFormData({...formData, weight: v})} />
-                            <InputGroup label="Gordura (%)" value={formData.bodyFat} onChange={(v) => setFormData({...formData, bodyFat: v})} />
+                            
+                            {/* CAMPO GORDURA (%) */}
+                            {formData.fatCalculationMethod === 'Dobras' ? (
+                                <InputGroup label="Gordura (%) (Auto)" value={formData.bodyFat} onChange={() => {}} />
+                            ) : (
+                                <InputGroup label="Gordura (%)" value={formData.bodyFat} onChange={(v) => setFormData({...formData, bodyFat: v})} />
+                            )}
+                            
                             <InputGroup label="Músculo (%)" value={formData.muscleMass} onChange={(v) => setFormData({...formData, muscleMass: v})} />
                             <InputGroup label="Gordura Visceral" value={formData.visceralFat} onChange={(v) => setFormData({...formData, visceralFat: v})} />
                             <InputGroup label="Idade Metabólica" value={formData.metabolicAge} onChange={(v) => setFormData({...formData, metabolicAge: v})} />
