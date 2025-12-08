@@ -16,13 +16,25 @@ const safeFloat = (value: string): number | any => {
     return isNaN(num) ? null : num;
 };
 
-// Parser para limpar e transformar a string JSON da IA em objeto
+// Parser Robusto para JSON da IA
 const parseAIJson = (jsonString: string) => {
+    if (!jsonString) return null;
     try {
+        // 1. Tenta encontrar o bloco JSON puro (entre a primeira '{' e a última '}')
+        const startIndex = jsonString.indexOf('{');
+        const endIndex = jsonString.lastIndexOf('}');
+        
+        if (startIndex !== -1 && endIndex !== -1) {
+            const jsonPart = jsonString.substring(startIndex, endIndex + 1);
+            return JSON.parse(jsonPart);
+        }
+        
+        // 2. Fallback: Tenta limpar markdown clássico
         const cleanString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
         return JSON.parse(cleanString);
     } catch (e) {
-        return null;
+        console.warn("Falha ao fazer parse do JSON da IA. Mostrando texto bruto.", e);
+        return null; // Retorna null para forçar exibição do texto bruto
     }
 };
 
@@ -46,7 +58,7 @@ const InputGroup = ({ label, value, onChange }: { label: string, value: string, 
 
 interface PtAvaliacaoCorporalProps {
     students: Student[];
-    trainerId: string; // Adicionado para suporte Multi-Tenant
+    trainerId: string;
 }
 
 const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, trainerId }) => {
@@ -249,7 +261,9 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
 
 
         setGeneratingAI(true);
-
+        // Resetamos os relatórios para garantir que a UI entenda que está carregando
+        setAiReportStrategic('');
+        
         const dadosAtuais = {
             data: new Date().toLocaleDateString('pt-BR'),
             ...formData,
@@ -272,11 +286,13 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             const strategic = await gerarRelatorioEstrategico(dadosCompletos, metodologia);
             const motivational = await gerarRelatorioMotivacional(dadosCompletos);
 
-            if (strategic) setAiReportStrategic(strategic);
-            if (motivational) setAiReportMotivational(motivational);
+            // IMPORTANTE: Só atualiza o estado se a string não for vazia
+            if (strategic && strategic.length > 10) setAiReportStrategic(strategic);
+            if (motivational && motivational.length > 10) setAiReportMotivational(motivational);
             
             showToast('Relatórios gerados com sucesso!', 'success');
         } catch (e) {
+            console.error(e);
             showToast('Erro ao gerar relatório.', 'error');
         } finally {
             setGeneratingAI(false);
@@ -336,7 +352,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             motivationalReport: aiReportMotivational
         };
 
-        // CORREÇÃO: Passando trainerId para a função de banco de dados
         const saved = await createAssessment(newAssessment, trainerId);
         
         if (saved) {
@@ -351,8 +366,18 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
     // Componente de Renderização do Relatório Estratégico (JSON)
     const renderStrategicReport = () => {
         if (!aiReportStrategic) return null;
+        
         const data = parseAIJson(aiReportStrategic);
-        if (!data) return <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-sm text-slate-300 whitespace-pre-line">{aiReportStrategic}</div>;
+        
+        // Se o parse falhar, mostramos o texto bruto para não esconder a informação
+        if (!data) {
+            return (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-sm text-slate-300 whitespace-pre-line animate-fadeIn">
+                    <p className="text-xs text-yellow-500 mb-2 font-bold uppercase">Visualização Bruta (Erro de Formatação IA)</p>
+                    {aiReportStrategic}
+                </div>
+            );
+        }
 
         return (
             <div className="space-y-6 animate-fadeIn">
@@ -361,7 +386,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                     <h4 className="text-red-400 font-bold uppercase text-xs tracking-wider mb-1 flex items-center gap-2">
                         <AlertTriangle size={14} /> Risco Principal Detectado
                     </h4>
-                    <p className="text-white font-bold text-lg mb-2">{data.diagnostico_estrategico?.risco_principal}</p>
+                    <p className="text-white font-bold text-lg mb-2">{data.diagnostico_estrategico?.risco_principal || "Em análise..."}</p>
                     <p className="text-slate-400 text-sm leading-relaxed">{data.diagnostico_estrategico?.justificativa_completa}</p>
                 </div>
 
@@ -377,11 +402,11 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
                         <span className="text-primary text-[10px] uppercase font-bold block mb-1">Destaque</span>
-                        <p className="text-white text-sm font-medium">{data.resumo_evolucao_texto?.destaque_progresso}</p>
+                        <p className="text-white text-sm font-medium">{data.resumo_evolucao_texto?.destaque_progresso || "-"}</p>
                     </div>
                     <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
                         <span className="text-red-400 text-[10px] uppercase font-bold block mb-1">Alerta</span>
-                        <p className="text-white text-sm font-medium">{data.resumo_evolucao_texto?.ponto_alerta}</p>
+                        <p className="text-white text-sm font-medium">{data.resumo_evolucao_texto?.ponto_alerta || "-"}</p>
                     </div>
                 </div>
 
