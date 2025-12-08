@@ -49,9 +49,15 @@ export const createStudent = async (student: Student, trainerId: string): Promis
     .single();
 
   if (error) {
-    // Tratamento de erro visual
-    if (typeof window !== 'undefined') {
-        alert(`Erro ao criar aluno: ${error.message} (${error.details || 'Sem detalhes'})`);
+    // Tratamento de erro específico para Email Duplicado (Postgres Error 23505)
+    if (error.code === '23505') {
+        if (typeof window !== 'undefined') {
+            alert(`O email "${student.email}" já está cadastrado no sistema. Use outro email ou edite o aluno existente.`);
+        }
+    } else {
+        if (typeof window !== 'undefined') {
+            alert(`Erro ao criar aluno: ${error.message}`);
+        }
     }
     console.error('Erro ao criar aluno:', error);
     return null;
