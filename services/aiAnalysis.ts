@@ -1,6 +1,18 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Removida a inicialização global que causava a tela branca/azul se a chave falhasse
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const getAIClient = () => {
+  // Tenta pegar a chave de várias fontes possíveis para evitar erro
+  const apiKey = process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
+  
+  if (!apiKey) {
+    console.warn("API Key do Google Gemini não encontrada.");
+  }
+  
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * Gera um relatório estratégico de evolução corporal em formato JSON.
@@ -10,6 +22,8 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  */
 export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia?: any): Promise<string | null> => {
   try {
+    const ai = getAIClient();
+
     // Combina os dados da avaliação com a metodologia para o prompt
     const dadosCompletos = {
       ...dadosAvaliacao,
@@ -19,7 +33,7 @@ export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia
     const inputData = JSON.stringify(dadosCompletos, null, 2);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Modelo de alta capacidade para raciocínio complexo
+      model: 'gemini-2.5-flash', // Usando Flash para resposta mais rápida e segura
       config: {
         temperature: 0.3, // Baixa temperatura para precisão técnica
         responseMimeType: 'application/json', // Força saída JSON
@@ -72,12 +86,14 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
  */
 export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<string | null> => {
   try {
+    const ai = getAIClient();
+    
     const inputData = typeof dadosAvaliacao === 'string' 
       ? dadosAvaliacao 
       : JSON.stringify(dadosAvaliacao, null, 2);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Equivalente Pro atualizado
+      model: 'gemini-2.5-flash', // Usando Flash para resposta mais rápida
       config: {
         temperature: 0.7, // Mais criativo e humano
         responseMimeType: 'application/json', // Força saída JSON

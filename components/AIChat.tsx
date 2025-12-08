@@ -57,7 +57,13 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const apiKey = process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
+      
+      if (!apiKey) {
+        throw new Error("Chave de API não configurada.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
       const systemInstruction = `
         Você é o 'Leleco AI', um assistente virtual de alta performance do Personal Trainer Leleco Coradini.
@@ -78,7 +84,7 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: result.text }]);
     } catch (error) {
       console.error("Erro na IA:", error);
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: "Falha na conexão. Tente novamente." }]);
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: "Ocorreu um erro na conexão. Tente novamente mais tarde." }]);
     } finally {
       setIsLoading(false);
     }
