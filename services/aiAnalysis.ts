@@ -1,17 +1,17 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Inicialização SEGURA do cliente Gemini
-// Isso evita que o app quebre ("crash") na inicialização se a chave não estiver presente no .env
 let ai: GoogleGenAI | null = null;
 
 try {
-  // O vite.config.ts mapeia env.API_KEY para process.env.API_KEY
-  const apiKey = process.env.API_KEY;
+  // process.env.API_KEY agora é garantido pelo vite.config.ts ser uma string (pode ser vazia)
+  const apiKey = process.env.API_KEY || '';
   
-  if (apiKey && typeof apiKey === 'string' && apiKey.trim().length > 0) {
+  if (apiKey && apiKey.trim().length > 0) {
     ai = new GoogleGenAI({ apiKey: apiKey });
   } else {
-    console.warn("⚠️ [Leleco App] Google Gemini API Key não detectada. As funcionalidades de IA serão desativadas.");
+    console.warn("⚠️ [Leleco App] Google Gemini API Key não detectada ou vazia. As funcionalidades de IA serão desativadas.");
   }
 } catch (error) {
   console.error("Erro fatal ao tentar inicializar o cliente GoogleGenAI:", error);
@@ -19,31 +19,27 @@ try {
 
 /**
  * Gera um relatório estratégico de evolução corporal em formato JSON.
- * @param dadosAvaliacao Objeto contendo os dados brutos da avaliação e histórico.
- * @param metodologia (Opcional) Objeto contendo o método de gordura e fórmula TMB usados.
- * @returns String JSON estruturada com a análise.
  */
 export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia?: any): Promise<string | null> => {
-  // Guarda de segurança: Se a IA não iniciou, retorna erro ou null imediatamente
+  // Guarda de segurança
   if (!ai) {
     console.error("Tentativa de uso da IA sem chave de API configurada.");
-    throw new Error("Serviço de IA indisponível. Chave de API ausente.");
+    throw new Error("Serviço de IA indisponível. Chave de API ausente ou inválida.");
   }
 
   try {
-    // Combina os dados da avaliação com a metodologia para o prompt
     const dadosCompletos = {
       ...dadosAvaliacao,
-      metodologia_aplicada: metodologia || "Não especificada (Assumir padrão padrão ouro ou comentar sobre falta de dados)"
+      metodologia_aplicada: metodologia || "Não especificada"
     };
 
     const inputData = JSON.stringify(dadosCompletos, null, 2);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // Usando Flash para resposta mais rápida e segura
+      model: 'gemini-2.5-flash',
       config: {
-        temperature: 0.3, // Baixa temperatura para precisão técnica
-        responseMimeType: 'application/json', // Força saída JSON
+        temperature: 0.3,
+        responseMimeType: 'application/json',
         systemInstruction: `# INSTRUÇÃO DO SISTEMA: Analista Estratégico de Evolução Corporal
 
 ## 1. PAPEL E OBJETIVO
@@ -70,10 +66,6 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
   ],
   "anotacoes_aluno_sugeridas": "string (Frase curta e impactante para o Personal falar ao aluno)"
 }
-
-## 3. DIRETRIZES DE ANÁLISE
-* **Análise de Metodologia:** Se o aluno for obeso e usarem dobras cutâneas, alerte sobre imprecisão. Se for atleta e usarem Mifflin-St Jeor, alerte sobre subestimação calórica.
-* **Idade Corporal:** Use a diferença entre idade cronológica e metabólica como indicador chave de saúde.
 `,
       },
       contents: inputData,
@@ -88,14 +80,12 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
 
 /**
  * Gera um relatório motivacional e simplificado para o PAINEL DO ALUNO em formato JSON.
- * @param dadosAvaliacao Objeto ou string contendo os dados brutos da avaliação.
- * @returns String JSON estruturada.
  */
 export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<string | null> => {
   // Guarda de segurança
   if (!ai) {
     console.error("Tentativa de uso da IA sem chave de API configurada.");
-    throw new Error("Serviço de IA indisponível. Chave de API ausente.");
+    throw new Error("Serviço de IA indisponível. Chave de API ausente ou inválida.");
   }
 
   try {
@@ -104,14 +94,14 @@ export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<s
       : JSON.stringify(dadosAvaliacao, null, 2);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // Usando Flash para resposta mais rápida
+      model: 'gemini-2.5-flash',
       config: {
-        temperature: 0.7, // Mais criativo e humano
-        responseMimeType: 'application/json', // Força saída JSON
+        temperature: 0.7,
+        responseMimeType: 'application/json',
         systemInstruction: `# INSTRUÇÃO DO SISTEMA: Comunicador de Evolução e Motivação (Foco no Cliente)
 
 ## 1. PAPEL E OBJETIVO
-Você é um **Coach Motivacional e Educador de Saúde** empático. Seu objetivo é traduzir a avaliação corporal técnica em uma mensagem clara, inspiradora e acionável para o aluno, focando no que ele precisa saber para agir.
+Você é um **Coach Motivacional e Educador de Saúde** empático. Seu objetivo é traduzir a avaliação corporal técnica em uma mensagem clara, inspiradora e acionável para o aluno.
 
 ## 2. FORMATO DE SAÍDA (OBRIGATÓRIO)
 Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown. Siga estritamente este schema:
@@ -126,12 +116,7 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown. Siga estri
     { "area": "Hábito", "acao": "string (Mudança de rotina, ex: passos, sono)" }
   ],
   "mensagem_final": "string (Frase de encerramento motivadora)"
-}
-
-## 3. RESTRIÇÕES
-* **PROIBIDO JARGÃO TÉCNICO:** NÃO use termos como: Obesidade Sarcopênica, Tensão Mecânica, NEAT, Catabolismo, Hipertrofia Miofibrilar.
-* **Tom de Voz:** Encorajador, positivo, parceiro.
-* **Foco:** Traduza números em benefícios reais de saúde e estética.`,
+}`,
       },
       contents: inputData,
     });

@@ -1,4 +1,4 @@
- 
+
 import React, { useState, useEffect } from 'react';
 import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles, ClipboardList, Activity } from 'lucide-react';
 import Dashboard from './components/Dashboard';

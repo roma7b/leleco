@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, ChevronLeft, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Sparkles, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
 interface AIChatProps {
@@ -57,8 +58,14 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
     setIsLoading(true);
 
     try {
-      // Inicialização correta usando process.env.API_KEY
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // 1. Verificação de Segurança da Chave
+      const apiKey = process.env.API_KEY;
+      if (!apiKey || apiKey.trim() === '') {
+          throw new Error("API Key ausente. Verifique as configurações do sistema.");
+      }
+
+      // 2. Inicialização Segura
+      const ai = new GoogleGenAI({ apiKey });
       
       const systemInstruction = `
         Você é o 'Leleco AI', um assistente virtual de alta performance do Personal Trainer Leleco Coradini.
@@ -77,9 +84,16 @@ const AIChat: React.FC<AIChatProps> = ({ userName, onBack }) => {
 
       const result = await chat.sendMessage({ message: userMessage.text });
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: result.text }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro na IA:", error);
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: "Ocorreu um erro na conexão. Verifique se a chave de API está configurada corretamente." }]);
+      
+      let errorMsg = "Ocorreu um erro na conexão. Tente novamente mais tarde.";
+      
+      if (error.message && error.message.includes("API Key")) {
+         errorMsg = "⚠️ Erro de Configuração: Chave de API da IA não encontrada. Avise seu treinador.";
+      }
+
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: errorMsg }]);
     } finally {
       setIsLoading(false);
     }
