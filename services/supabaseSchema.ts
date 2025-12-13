@@ -1,92 +1,88 @@
 /**
- * SUPABASE SQL SCHEMA DEFINITION
+ * SUPABASE SQL SCHEMA - SILVER BULLET FIX
  * 
- * Execute this in the Supabase SQL Editor to set up the database.
+ * ESTRATÉGIA: MUDANÇA DE NOME DA TABELA
+ * O erro PGRST204 ocorre porque o Supabase travou no cache da tabela 'assessments'.
+ * Vamos criar uma tabela nova chamada 'student_assessments'. O cache não existe para ela,
+ * então vai funcionar de primeira.
+ * 
+ * INSTRUÇÕES:
+ * 1. Copie e cole no SQL Editor.
+ * 2. Clique em RUN.
  */
 
-/*
--- Table: students
-create table if not exists public.students (
-  id uuid default gen_random_uuid() primary key,
-  trainer_id text, -- ID do Personal (Multi-tenant)
-  name text not null,
-  email text,
-  avatar_url text,
-  status text check (status in ('Pago', 'Atrasado', 'Pendente')),
-  goal text,
-  last_payment_date date,
-  password text, -- Added for student login
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+export const SUPABASE_SQL_SCRIPT = `
+-- 1. Cria a tabela nova com nome diferente para driblar o cache
+CREATE TABLE IF NOT EXISTS public.student_assessments (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at timestamp with time zone DEFAULT now(),
+    date timestamp with time zone DEFAULT now(),
+    
+    student_id text NOT NULL,
+    trainer_id text NOT NULL,
+    
+    -- Biometria
+    age numeric,
+    height numeric,
+    imc numeric,
+    weight numeric,
+    
+    -- Metodologia
+    fat_method text,
+    tmb_method text,
+    
+    -- Composição
+    body_fat numeric,
+    muscle_mass numeric,
+    visceral_fat numeric,
+    metabolic_age numeric,
+    
+    -- Medidas Centrais
+    chest numeric,
+    waist numeric,
+    abdomen numeric,
+    hips numeric,
+    
+    -- Medidas Bilaterais (Novas)
+    arm_right numeric DEFAULT 0,
+    arm_left numeric DEFAULT 0,
+    thigh_right numeric DEFAULT 0,
+    thigh_left numeric DEFAULT 0,
+    calf_right numeric DEFAULT 0,
+    calf_left numeric DEFAULT 0,
+    
+    -- Dobras
+    sf_chest numeric,
+    sf_axillary numeric,
+    sf_triceps numeric,
+    sf_subscapular numeric,
+    sf_abdominal numeric,
+    sf_suprailiac numeric,
+    sf_thigh numeric,
+
+    -- Extras
+    photo_urls jsonb DEFAULT '{}'::jsonb,
+    strategic_report text,
+    motivational_report text
 );
 
--- Table: workout_plans
-create table if not exists public.workout_plans (
-  id uuid default gen_random_uuid() primary key,
-  trainer_id text,
-  student_id uuid references public.students(id) on delete cascade,
-  title text not null,
-  content jsonb, 
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- 2. Habilita segurança na tabela nova
+ALTER TABLE public.student_assessments ENABLE ROW LEVEL SECURITY;
 
--- Table: workouts (Alias para workout_plans se o código usar esse nome)
-create table if not exists public.workouts (
-  id uuid default gen_random_uuid() primary key,
-  trainer_id text,
-  student_id uuid references public.students(id) on delete cascade,
-  title text not null,
-  content jsonb, 
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- 3. Cria política de acesso total (Leitura/Escrita) para todos (Dev Mode)
+DROP POLICY IF EXISTS "Acesso Total Nova Tabela" ON public.student_assessments;
+CREATE POLICY "Acesso Total Nova Tabela" 
+ON public.student_assessments 
+FOR ALL 
+USING (true) 
+WITH CHECK (true);
 
--- Table: assessments (Avaliações Físicas)
-create table if not exists public.assessments (
-  id uuid default gen_random_uuid() primary key,
-  trainer_id text,
-  student_id uuid references public.students(id) on delete cascade,
-  date date not null,
-  
-  -- Biometria e Metodologia
-  age numeric,
-  height numeric,
-  imc numeric,
-  fat_method text,
-  tmb_method text,
+-- 4. Notifica o PostgREST para reconhecer a nova tabela imediatamente
+NOTIFY pgrst, 'reload config';
 
-  weight numeric,
-  body_fat numeric,
-  muscle_mass numeric,
-  visceral_fat numeric,
-  metabolic_age numeric,
-  
-  -- Medidas
-  chest numeric,
-  arms numeric,
-  waist numeric,
-  abdomen numeric,
-  hips numeric,
-  thighs numeric,
-  calves numeric,
+-- 5. ATUALIZAÇÃO FINANCEIRA (Adiciona colunas na tabela students se não existirem)
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS payment_link text;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS due_day numeric DEFAULT 10;
 
-  -- Dobras Cutâneas (mm)
-  sf_chest numeric,
-  sf_axillary numeric,
-  sf_triceps numeric,
-  sf_subscapular numeric,
-  sf_abdominal numeric,
-  sf_suprailiac numeric,
-  sf_thigh numeric,
-  
-  -- Relatórios IA
-  strategic_report text,
-  motivational_report text,
-  
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Desabilitar RLS para evitar erros de permissão iniciais
-alter table public.students disable row level security;
-alter table public.workouts disable row level security;
-alter table public.assessments disable row level security;
-*/
-export const SCHEMA_INFO = "See file content for SQL definitions";
+-- FIM DO SCRIPT
+`;

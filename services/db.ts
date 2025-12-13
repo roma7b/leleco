@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
-import { Student, WorkoutPlan, PaymentStatus, Assessment } from '../types';
+import { Student, WorkoutPlan, PaymentStatus, Assessment, AssessmentPhotos } from '../types';
+
+// --- HELPER ---
+const cleanNumber = (val: number | undefined | null) => {
+    if (val === undefined || val === null || isNaN(val)) return null;
+    return val;
+}
 
 // --- ALUNOS ---
 
@@ -9,7 +15,7 @@ export const fetchStudents = async (trainerId: string): Promise<Student[]> => {
   const { data, error } = await supabase
     .from('students')
     .select('*')
-    .eq('trainer_id', trainerId) // Filtra pelo Treinador Logado
+    .eq('trainer_id', trainerId) 
     .order('name');
 
   if (error) {
@@ -17,7 +23,6 @@ export const fetchStudents = async (trainerId: string): Promise<Student[]> => {
     return [];
   }
 
-  // Mapear snake_case do banco para camelCase do TypeScript
   return data.map((s: any) => ({
     id: s.id,
     name: s.name,
@@ -26,7 +31,9 @@ export const fetchStudents = async (trainerId: string): Promise<Student[]> => {
     status: s.status as PaymentStatus,
     goal: s.goal,
     lastPaymentDate: s.last_payment_date,
-    password: s.password, // Recuperando a senha para verificação de login
+    password: s.password,
+    paymentLink: s.payment_link,
+    dueDay: s.due_day
   }));
 };
 
@@ -35,32 +42,27 @@ export const createStudent = async (student: Student, trainerId: string): Promis
     .from('students')
     .insert([
       {
-        trainer_id: trainerId, // Vincula ao Treinador
+        trainer_id: trainerId, 
         name: student.name,
         email: student.email,
         avatar_url: student.avatarUrl,
         status: student.status,
         goal: student.goal,
         last_payment_date: student.lastPaymentDate,
-        password: student.password, 
+        password: student.password,
+        payment_link: student.paymentLink,
+        due_day: student.dueDay || 10
       },
     ])
     .select()
     .single();
 
   if (error) {
-    // Tratamento de erro específico para Email Duplicado (Postgres Error 23505)
     if (error.code === '23505') {
-        if (typeof window !== 'undefined') {
-            alert(`O email "${student.email}" já está cadastrado no sistema. Use outro email ou edite o aluno existente.`);
-        }
-    } else {
-        if (typeof window !== 'undefined') {
-            alert(`Erro ao criar aluno: ${error.message}`);
-        }
+        throw new Error(`O email "${student.email}" já está cadastrado.`);
     }
     console.error('Erro ao criar aluno:', error);
-    return null;
+    throw error;
   }
 
   return {
@@ -75,7 +77,9 @@ export const updateStudent = async (student: Student): Promise<boolean> => {
       goal: student.goal,
       last_payment_date: student.lastPaymentDate,
       name: student.name,
-      email: student.email
+      email: student.email,
+      payment_link: student.paymentLink,
+      due_day: student.dueDay
   };
 
   if (student.password && student.password.trim() !== '') {
@@ -89,10 +93,26 @@ export const updateStudent = async (student: Student): Promise<boolean> => {
 
   if (error) {
     console.error('Erro ao atualizar aluno:', error);
-    if (typeof window !== 'undefined') alert(`Erro ao atualizar: ${error.message}`);
-    return false;
+    throw error;
   }
   return true;
+};
+
+// NOVA FUNÇÃO ESPECÍFICA PARA ATUALIZAÇÃO FINANCEIRA
+export const updateStudentFinancials = async (studentId: string, status: string, paymentLink: string): Promise<boolean> => {
+    const { error } = await supabase
+        .from('students')
+        .update({ 
+            status: status,
+            payment_link: paymentLink
+        })
+        .eq('id', studentId);
+
+    if (error) {
+        console.error('Erro ao atualizar financeiro:', error);
+        throw error;
+    }
+    return true;
 };
 
 // --- TREINOS ---
@@ -103,7 +123,7 @@ export const fetchWorkouts = async (trainerId: string): Promise<WorkoutPlan[]> =
   const { data, error } = await supabase
     .from('workouts')
     .select('*')
-    .eq('trainer_id', trainerId); // Filtra pelo Treinador
+    .eq('trainer_id', trainerId); 
 
   if (error) {
     console.error('Erro ao buscar treinos:', error);
@@ -115,7 +135,7 @@ export const fetchWorkouts = async (trainerId: string): Promise<WorkoutPlan[]> =
     studentId: w.student_id,
     title: w.title,
     createdAt: w.created_at,
-    sessions: w.content // O JSON salva a estrutura completa
+    sessions: w.content 
   }));
 };
 
@@ -124,7 +144,7 @@ export const createWorkout = async (workout: WorkoutPlan, trainerId: string): Pr
     .from('workouts')
     .insert([
       {
-        trainer_id: trainerId, // Vincula ao Treinador
+        trainer_id: trainerId, 
         student_id: workout.studentId,
         title: workout.title,
         content: workout.sessions, 
@@ -135,11 +155,8 @@ export const createWorkout = async (workout: WorkoutPlan, trainerId: string): Pr
     .single();
 
   if (error) {
-    if (typeof window !== 'undefined') {
-        alert(`Erro ao salvar treino: ${error.message}`);
-    }
     console.error('Erro ao salvar treino:', error);
-    return null;
+    throw error;
   }
 
   return {
@@ -148,20 +165,18 @@ export const createWorkout = async (workout: WorkoutPlan, trainerId: string): Pr
   };
 };
 
-// --- AVALIAÇÕES ---
+// --- AVALIAÇÕES (Agora usando a tabela student_assessments) ---
 
 export const fetchAssessments = async (studentId?: string, trainerId?: string): Promise<Assessment[]> => {
-  let query = supabase.from('assessments').select('*').order('date', { ascending: false });
+  // Apontando para a nova tabela para evitar cache antigo
+  let query = supabase.from('student_assessments').select('*').order('date', { ascending: false });
   
-  // Se tiver studentId, foca nele (Prioridade para visão do aluno ou detalhe do aluno)
   if (studentId) {
     query = query.eq('student_id', studentId);
   } 
-  // Se não tiver studentId mas tiver trainerId, pega todas do treinador (Visão Dashboard Geral)
   else if (trainerId) {
     query = query.eq('trainer_id', trainerId);
   } else {
-    // Se não passar nenhum, retorna vazio por segurança em multi-tenant
     return [];
   }
 
@@ -190,18 +205,21 @@ export const fetchAssessments = async (studentId?: string, trainerId?: string): 
     visceralFat: a.visceral_fat,
     metabolicAge: a.metabolic_age,
     
-    // Medidas
+    // Medidas Básicas
     chest: a.chest,
-    arms: a.arms,
     waist: a.waist,
     abdomen: a.abdomen,
     hips: a.hips,
-    thighs: a.thighs,
-    calves: a.calves,
+
+    // Medidas Bilaterais
+    armRight: a.arm_right,
+    armLeft: a.arm_left,
+    thighRight: a.thigh_right,
+    thighLeft: a.thigh_left,
+    calfRight: a.calf_right,
+    calfLeft: a.calf_left,
     
-    // Dobras (Mapeando do banco sf_ para o objeto TypeScript, se necessário, ou campos diretos)
-    // O tipo Assessment no types.ts precisa refletir isso se formos usar na UI
-    // Por enquanto, assumimos que o createAssessment está salvando e aqui estamos lendo o básico
+    // Dobras 
     sf_chest: a.sf_chest,
     sf_axillary: a.sf_axillary,
     sf_triceps: a.sf_triceps,
@@ -210,68 +228,86 @@ export const fetchAssessments = async (studentId?: string, trainerId?: string): 
     sf_suprailiac: a.sf_suprailiac,
     sf_thigh: a.sf_thigh,
 
-    // IA
+    photoUrls: a.photo_urls,
     strategicReport: a.strategic_report,
     motivationalReport: a.motivational_report
   }));
 };
 
-export const createAssessment = async (assessment: Assessment, trainerId: string): Promise<Assessment | null> => {
+export const createAssessment = async (assessment: Assessment, trainerId: string): Promise<Assessment> => {
+  const insertPayload = {
+    trainer_id: trainerId, 
+    student_id: assessment.studentId,
+    date: assessment.date,
+    
+    age: cleanNumber(assessment.age),
+    height: cleanNumber(assessment.height),
+    imc: cleanNumber(assessment.imc),
+    
+    fat_method: assessment.fatCalculationMethod ?? 'Bioimpedância',
+    tmb_method: assessment.tmbFormula ?? 'Mifflin-St Jeor',
+
+    weight: assessment.weight || 0,
+    body_fat: assessment.bodyFat || 0,
+    muscle_mass: assessment.muscleMass || 0,
+    visceral_fat: cleanNumber(assessment.visceralFat),
+    metabolic_age: cleanNumber(assessment.metabolicAge),
+    
+    chest: cleanNumber(assessment.chest),
+    waist: cleanNumber(assessment.waist),
+    abdomen: cleanNumber(assessment.abdomen),
+    hips: cleanNumber(assessment.hips),
+    
+    // Medidas Bilaterais Novas
+    arm_right: cleanNumber(assessment.armRight),
+    arm_left: cleanNumber(assessment.armLeft),
+    thigh_right: cleanNumber(assessment.thighRight),
+    thigh_left: cleanNumber(assessment.thighLeft),
+    calf_right: cleanNumber(assessment.calfRight),
+    calf_left: cleanNumber(assessment.calfLeft),
+    
+    sf_chest: cleanNumber(assessment.sf_chest),
+    sf_axillary: cleanNumber(assessment.sf_axillary),
+    sf_triceps: cleanNumber(assessment.sf_triceps),
+    sf_subscapular: cleanNumber(assessment.sf_subscapular),
+    sf_abdominal: cleanNumber(assessment.sf_abdominal),
+    sf_suprailiac: cleanNumber(assessment.sf_suprailiac),
+    sf_thigh: cleanNumber(assessment.sf_thigh),
+
+    photo_urls: assessment.photoUrls || {},
+    strategic_report: assessment.strategicReport || null,
+    motivational_report: assessment.motivationalReport || null
+  };
+
+  // Apontando para a nova tabela
   const { data, error } = await supabase
-    .from('assessments')
-    .insert([
-      {
-        trainer_id: trainerId, // Vincula ao Treinador
-        student_id: assessment.studentId,
-        date: assessment.date,
-        
-        // Mapeando novos campos para snake_case do banco
-        age: assessment.age,
-        height: assessment.height,
-        imc: assessment.imc,
-        fat_method: assessment.fatCalculationMethod,
-        tmb_method: assessment.tmbFormula,
-
-        weight: assessment.weight,
-        body_fat: assessment.bodyFat,
-        muscle_mass: assessment.muscleMass,
-        visceral_fat: assessment.visceralFat,
-        metabolic_age: assessment.metabolicAge,
-        
-        chest: assessment.chest,
-        arms: assessment.arms,
-        waist: assessment.waist,
-        abdomen: assessment.abdomen,
-        hips: assessment.hips,
-        thighs: assessment.thighs,
-        calves: assessment.calves,
-
-        // Dobras
-        sf_chest: assessment.sf_chest,
-        sf_axillary: assessment.sf_axillary,
-        sf_triceps: assessment.sf_triceps,
-        sf_subscapular: assessment.sf_subscapular,
-        sf_abdominal: assessment.sf_abdominal,
-        sf_suprailiac: assessment.sf_suprailiac,
-        sf_thigh: assessment.sf_thigh,
-
-        strategic_report: assessment.strategicReport,
-        motivational_report: assessment.motivationalReport
-      },
-    ])
+    .from('student_assessments')
+    .insert([insertPayload])
     .select()
     .single();
 
   if (error) {
-    if (typeof window !== 'undefined') {
-        alert(`Erro ao salvar avaliação: ${error.message} (${error.details || 'Verifique colunas no banco'})`);
-    }
-    console.error('Erro detalhado ao salvar avaliação:', error);
-    return null;
+    console.error('DB ERROR createAssessment:', error);
+    throw new Error(`Erro Supabase: ${error.message}`); 
   }
 
   return {
     ...assessment,
     id: data.id
   };
+};
+
+export const updateAssessmentPhotos = async (assessmentId: string, photos: AssessmentPhotos): Promise<boolean> => {
+    // Apontando para a nova tabela
+    const { error } = await supabase
+        .from('student_assessments')
+        .update({ photo_urls: photos })
+        .eq('id', assessmentId)
+        .select('id'); 
+
+    if (error) {
+        console.error('DB Update Error:', error);
+        throw error;
+    }
+    return true;
 };

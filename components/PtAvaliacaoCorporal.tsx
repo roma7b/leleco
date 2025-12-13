@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, History, Layers, Calendar, ChevronRight } from 'lucide-react';
-import { Student, Assessment } from '../types';
+import { Save, BrainCircuit, Activity, Ruler, User, ClipboardList, Loader2, FileText, Calculator, Settings2, AlertTriangle, CheckCircle2, Utensils, Dumbbell, Brain, Quote, History, Layers, Calendar, ChevronRight, Scale, Image as ImageIcon } from 'lucide-react';
+import { Student, Assessment, AssessmentPhotos } from '../types';
 import { createAssessment, fetchAssessments } from '../services/db';
 import { gerarRelatorioEstrategico, gerarRelatorioMotivacional } from '../services/aiAnalysis';
 import { useToast } from './ToastContext';
@@ -38,17 +39,68 @@ const parseAIJson = (jsonString: string) => {
     }
 };
 
-// Componente para a Linha de Input
-const InputGroup = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
+// Componente para Linha de Input Simples
+const InputGroup = ({ label, value, onChange, readOnly = false }: { label: string, value: string, onChange: (v: string) => void, readOnly?: boolean }) => (
     <div>
         <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{label}</label>
         <input 
             type="number" 
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none text-center font-mono"
+            readOnly={readOnly}
+            className={`w-full border p-3 rounded-lg outline-none text-center font-mono transition-colors ${
+                readOnly 
+                ? 'bg-slate-950 border-slate-800 text-slate-500 cursor-not-allowed' 
+                : 'bg-slate-900 border-slate-700 text-white focus:border-primary'
+            }`}
             placeholder="-"
         />
+    </div>
+);
+
+// Componente para Input Bilateral (Direito / Esquerdo)
+const BilateralInputGroup = ({ label, valueR, valueL, onChangeR, onChangeL }: { label: string, valueR: string, valueL: string, onChangeR: (v: string) => void, onChangeL: (v: string) => void }) => (
+    <div className="col-span-2 bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 text-center">{label}</label>
+        <div className="flex gap-2">
+            <div className="flex-1">
+                <span className="block text-[8px] text-center text-slate-600 uppercase mb-0.5 font-bold">DIR</span>
+                <input 
+                    type="number" 
+                    value={valueR}
+                    onChange={(e) => onChangeR(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded-lg focus:border-primary outline-none text-center font-mono text-sm"
+                    placeholder="D"
+                />
+            </div>
+            <div className="w-px bg-slate-800 my-1"></div>
+            <div className="flex-1">
+                 <span className="block text-[8px] text-center text-slate-600 uppercase mb-0.5 font-bold">ESQ</span>
+                 <input 
+                    type="number" 
+                    value={valueL}
+                    onChange={(e) => onChangeL(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 text-white p-2 rounded-lg focus:border-primary outline-none text-center font-mono text-sm"
+                    placeholder="E"
+                />
+            </div>
+        </div>
+    </div>
+);
+
+// Componente para Visualizar Foto Pequena
+const MiniPhoto = ({ url, label }: { url?: string, label: string }) => (
+    <div className="bg-slate-950 border border-slate-800 rounded-lg aspect-square relative overflow-hidden group">
+        {url ? (
+            <img src={url} alt={label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+        ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-700">
+                <ImageIcon size={20} />
+            </div>
+        )}
+        <div className="absolute bottom-0 left-0 w-full bg-slate-950/80 text-[8px] text-center py-1 font-bold text-slate-400 uppercase">
+            {label}
+        </div>
     </div>
 );
 
@@ -70,35 +122,40 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
     // Histórico
     const [history, setHistory] = useState<Assessment[]>([]);
     const [previousAssessment, setPreviousAssessment] = useState<Assessment | null>(null);
-    
+
     // Form State
     const [formData, setFormData] = useState({
-        // Novos campos de metodologia
+        // Metodologia
         fatCalculationMethod: 'Bioimpedância',
         tmbFormula: 'Mifflin-St Jeor',
         
         // Dados Biométricos Básicos
-        age: '',      // Idade
-        height: '',   // Altura (cm)
-        imc: '',      // IMC (Calculado)
-        gender: 'male', // Gênero para fórmulas
+        age: '',      
+        height: '',   
+        imc: '',      
+        gender: 'male',
 
-        // Dados numéricos
+        // Composição Corporal
         weight: '',
-        bodyFat: '', // Este será preenchido automaticamente se 'Dobras' for selecionado
-        bodyFatManual: '', // Novo campo para input manual de % Gordura, caso não use dobras
+        bodyFat: '', // Calculado automaticamente (Dobras)
+        bodyFatManual: '', // Input manual (Bioimpedância / Medidas)
         muscleMass: '',
         visceralFat: '',
         metabolicAge: '',
         
-        // Perimetria
+        // Perimetria Central
         chest: '',
-        arms: '',
         waist: '',
         abdomen: '',
         hips: '',
-        thighs: '',
-        calves: '',
+
+        // Perimetria Bilateral (Novos Campos)
+        armRight: '',
+        armLeft: '',
+        thighRight: '',
+        thighLeft: '',
+        calfRight: '',
+        calfLeft: '',
 
         // Dobras Cutâneas (mm)
         skinFolds: {
@@ -109,13 +166,16 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             abdominal: '',  
             suprailiac: '', 
             thigh: ''       
-        }
+        },
+
+        // Fotos (Apenas visualização, vêm do assessment carregado)
+        photoUrls: undefined as AssessmentPhotos | undefined
     });
 
     const [aiReportStrategic, setAiReportStrategic] = useState<string>('');
     const [aiReportMotivational, setAiReportMotivational] = useState<string>('');
 
-    // EFEITO 1: Carregar histórico ao mudar de aluno
+    // EFEITOS
     useEffect(() => {
         if (selectedStudentId) {
             loadHistory(selectedStudentId);
@@ -123,11 +183,9 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
         }
     }, [selectedStudentId]);
 
-    // EFEITO 2: Cálculo Automático do IMC
     useEffect(() => {
         const weightVal = parseFloat(formData.weight);
         const heightVal = parseFloat(formData.height);
-
         if (weightVal > 0 && heightVal > 0) {
             const heightInMeters = heightVal / 100;
             const imcValue = weightVal / (heightInMeters * heightInMeters);
@@ -136,49 +194,54 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             setFormData(prev => ({ ...prev, imc: '' }));
         }
     }, [formData.weight, formData.height]);
-    
-    // --- LÓGICA DE CÁLCULO DE GORDURA (POLLOCK 7-SITE) ---
 
+    useEffect(() => {
+        if (formData.fatCalculationMethod === 'Bioimpedância') {
+            const fatVal = parseFloat(formData.bodyFatManual);
+            const weightVal = parseFloat(formData.weight);
+            const ageVal = parseFloat(formData.age);
+            if (!isNaN(fatVal) && !isNaN(weightVal)) {
+                const autoMuscle = 100 - fatVal;
+                const autoMetabolicAge = !isNaN(ageVal) ? (ageVal > 5 ? ageVal - 4 : ageVal) : 25;
+                const autoVisceral = 7; 
+                setFormData(prev => ({
+                    ...prev,
+                    muscleMass: autoMuscle.toFixed(1),
+                    visceralFat: prev.visceralFat || autoVisceral.toString(),
+                    metabolicAge: prev.metabolicAge || autoMetabolicAge.toString()
+                }));
+            }
+        }
+    }, [formData.fatCalculationMethod, formData.bodyFatManual, formData.weight, formData.age]);
+    
     const calculateBodyFat = (folds: typeof formData.skinFolds, gender: string, age: number): string | null => {
         const foldValues = Object.values(folds).map((v) => parseFloat((v as string) || '0'));
-        
         const sumOfFolds = foldValues.reduce((sum, val) => sum + val, 0);
         if (sumOfFolds <= 0 || age <= 0) return null;
-
         let BD: number;
-
         if (gender === 'male') {
              BD = 1.112 - (0.00043499 * sumOfFolds) + (0.00000055 * sumOfFolds * sumOfFolds) - (0.0002882 * age);
         } else {
              BD = 1.0970 - (0.00046971 * sumOfFolds) + (0.00000056 * sumOfFolds * sumOfFolds) - (0.00012828 * age);
         }
-
         const percentFat = ((4.95 / BD) - 4.50) * 100;
-
         return (isNaN(percentFat) || percentFat < 0) ? null : percentFat.toFixed(2);
     };
 
-    // EFEITO 3: Recálculo Automático da % Gordura
     useEffect(() => {
         const ageVal = parseFloat(formData.age);
-        let calculatedFat: string | null = null;
-        
         if (formData.fatCalculationMethod === 'Dobras') {
-            calculatedFat = calculateBodyFat(formData.skinFolds, formData.gender, ageVal);
-            
-            // Se o cálculo for bem-sucedido, atualiza bodyFat. Senão, bodyFat fica vazio.
+            const calculatedFat = calculateBodyFat(formData.skinFolds, formData.gender, ageVal);
             if (calculatedFat !== null) {
                 setFormData(prev => ({ ...prev, bodyFat: calculatedFat }));
             } else {
-                // Se o cálculo falhou (dados incompletos), limpa o campo bodyFat para evitar valor antigo
                 setFormData(prev => ({ ...prev, bodyFat: '' }));
             }
         }
-        
     }, [formData.skinFolds, formData.gender, formData.age, formData.fatCalculationMethod]);
 
 
-    // --- Funções de Carregamento e Limpeza ---
+    // --- FUNÇÕES DE CARREGAMENTO E LIMPEZA ---
     
     const clearForm = () => {
         setFormData({
@@ -186,15 +249,16 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             tmbFormula: 'Mifflin-St Jeor',
             age: '', height: '', imc: '', gender: 'male',
             weight: '', bodyFat: '', bodyFatManual: '', muscleMass: '', visceralFat: '', metabolicAge: '',
-            chest: '', arms: '', waist: '', abdomen: '', hips: '', thighs: '', calves: '',
-            skinFolds: { chest: '', axillary: '', triceps: '', subscapular: '', abdominal: '', suprailiac: '', thigh: '' }
+            chest: '', waist: '', abdomen: '', hips: '',
+            armRight: '', armLeft: '', thighRight: '', thighLeft: '', calfRight: '', calfLeft: '',
+            skinFolds: { chest: '', axillary: '', triceps: '', subscapular: '', abdominal: '', suprailiac: '', thigh: '' },
+            photoUrls: undefined
         });
         setAiReportStrategic('');
         setAiReportMotivational('');
     };
 
     const loadHistory = async (id: string) => {
-        // Agora passando trainerId para garantir segurança, embora o select de aluno já filtre
         const data = await fetchAssessments(id);
         setHistory(data);
         if (data.length > 0) {
@@ -204,7 +268,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
         }
     };
 
-    // Carregar uma avaliação antiga no formulário
     const handleLoadAssessment = (assessment: Assessment) => {
         setFormData({
             fatCalculationMethod: assessment.fatCalculationMethod || 'Bioimpedância',
@@ -212,21 +275,28 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             age: assessment.age?.toString() || '',
             height: assessment.height?.toString() || '',
             imc: assessment.imc?.toString() || '',
-            gender: 'male', // Assumido, ou ajuste se o campo for adicionado à Assessment
+            gender: 'male', 
             weight: assessment.weight?.toString() || '',
             bodyFat: assessment.bodyFat?.toString() || '',
-            bodyFatManual: '', // Não carregamos o campo manual aqui, o campo bodyFat já está carregado
+            bodyFatManual: assessment.fatCalculationMethod !== 'Dobras' ? assessment.bodyFat?.toString() || '' : '', 
             muscleMass: assessment.muscleMass?.toString() || '',
             visceralFat: assessment.visceralFat?.toString() || '',
             metabolicAge: assessment.metabolicAge?.toString() || '',
+            
+            // Perimetria
             chest: assessment.chest?.toString() || '',
-            arms: assessment.arms?.toString() || '',
             waist: assessment.waist?.toString() || '',
             abdomen: assessment.abdomen?.toString() || '',
             hips: assessment.hips?.toString() || '',
-            thighs: assessment.thighs?.toString() || '',
-            calves: assessment.calves?.toString() || '',
-            // Carregamento dos dados de Dobras
+            
+            // Bilaterais
+            armRight: assessment.armRight?.toString() || assessment.arms?.toString() || '', 
+            armLeft: assessment.armLeft?.toString() || assessment.arms?.toString() || '',
+            thighRight: assessment.thighRight?.toString() || assessment.thighs?.toString() || '',
+            thighLeft: assessment.thighLeft?.toString() || assessment.thighs?.toString() || '',
+            calfRight: assessment.calfRight?.toString() || assessment.calves?.toString() || '',
+            calfLeft: assessment.calfLeft?.toString() || assessment.calves?.toString() || '',
+
             skinFolds: { 
                 chest: assessment.sf_chest?.toString() || '', 
                 axillary: assessment.sf_axillary?.toString() || '', 
@@ -235,7 +305,9 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                 abdominal: assessment.sf_abdominal?.toString() || '',
                 suprailiac: assessment.sf_suprailiac?.toString() || '',
                 thigh: assessment.sf_thigh?.toString() || '',
-            } 
+            },
+
+            photoUrls: assessment.photoUrls
         });
         setAiReportStrategic(assessment.strategicReport || '');
         setAiReportMotivational(assessment.motivationalReport || '');
@@ -243,7 +315,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
     };
 
     const handleGenerateAI = async () => {
-        // Obter a % de gordura a ser usada (prioriza cálculo, senão manual)
         const finalBodyFat = formData.fatCalculationMethod === 'Dobras' 
                              ? formData.bodyFat 
                              : formData.bodyFatManual;
@@ -253,21 +324,18 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             return;
         }
 
-        // Alerta se o PT tentar gerar IA com o cálculo de dobras incompleto
         if (formData.fatCalculationMethod === 'Dobras' && finalBodyFat === '') {
-             showToast('O cálculo da Gordura (%) está incompleto! Preencha a Idade e todas as 7 dobras, ou mude o método.', 'warning');
+             showToast('O cálculo da Gordura (%) está incompleto! Preencha a Idade e todas as 7 dobras.', 'warning');
              return;
         }
 
-
         setGeneratingAI(true);
-        // Resetamos os relatórios para garantir que a UI entenda que está carregando
         setAiReportStrategic('');
         
         const dadosAtuais = {
             data: new Date().toLocaleDateString('pt-BR'),
             ...formData,
-            bodyFat: finalBodyFat // Garante que a IA use o valor calculado ou manual
+            bodyFat: finalBodyFat
         };
 
         const dadosCompletos = {
@@ -286,7 +354,6 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             const strategic = await gerarRelatorioEstrategico(dadosCompletos, metodologia);
             const motivational = await gerarRelatorioMotivacional(dadosCompletos);
 
-            // IMPORTANTE: Só atualiza o estado se a string não for vazia
             if (strategic && strategic.length > 10) setAiReportStrategic(strategic);
             if (motivational && motivational.length > 10) setAiReportMotivational(motivational);
             
@@ -299,17 +366,16 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
         }
     };
 
-    // Função de salvamento (Final e completa)
+    // --- NOVA LÓGICA DE SALVAR (ROBUSTA) ---
     const handleSave = async () => {
         if (!selectedStudentId) return;
 
-        // Obter a % de gordura a ser usada (prioriza cálculo, senão manual)
         const finalBodyFat = formData.fatCalculationMethod === 'Dobras' 
                              ? formData.bodyFat 
                              : formData.bodyFatManual;
         
-        if (!formData.weight || !finalBodyFat || !formData.muscleMass) {
-             showToast('Preencha pelo menos Peso, Gordura (%) e Músculo (%).', 'error');
+        if (!formData.weight || !finalBodyFat) {
+             showToast('Preencha Peso e Gordura Corporal.', 'error');
              return;
         }
 
@@ -327,19 +393,23 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             tmbFormula: formData.tmbFormula,
 
             weight: safeFloat(formData.weight) || 0,
-            bodyFat: safeFloat(finalBodyFat) || 0, // SALVA O VALOR CALCULADO/MANUAL
+            bodyFat: safeFloat(finalBodyFat) || 0,
             muscleMass: safeFloat(formData.muscleMass) || 0,
             visceralFat: safeFloat(formData.visceralFat),
             metabolicAge: safeFloat(formData.metabolicAge),
+            
             chest: safeFloat(formData.chest),
-            arms: safeFloat(formData.arms),
             waist: safeFloat(formData.waist),
             abdomen: safeFloat(formData.abdomen),
             hips: safeFloat(formData.hips),
-            thighs: safeFloat(formData.thighs),
-            calves: safeFloat(formData.calves),
+
+            armRight: safeFloat(formData.armRight),
+            armLeft: safeFloat(formData.armLeft),
+            thighRight: safeFloat(formData.thighRight),
+            thighLeft: safeFloat(formData.thighLeft),
+            calfRight: safeFloat(formData.calfRight),
+            calfLeft: safeFloat(formData.calfLeft),
             
-            // Inclusão dos campos de Dobras para o Supabase
             sf_chest: safeFloat(formData.skinFolds.chest),
             sf_axillary: safeFloat(formData.skinFolds.axillary),
             sf_triceps: safeFloat(formData.skinFolds.triceps),
@@ -348,28 +418,41 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
             sf_suprailiac: safeFloat(formData.skinFolds.suprailiac),
             sf_thigh: safeFloat(formData.skinFolds.thigh),
             
+            photoUrls: formData.photoUrls,
+
             strategicReport: aiReportStrategic,
             motivationalReport: aiReportMotivational
         };
 
-        const saved = await createAssessment(newAssessment, trainerId);
-        
-        if (saved) {
+        try {
+            await createAssessment(newAssessment, trainerId);
             showToast('Avaliação salva com sucesso!', 'success');
             loadHistory(selectedStudentId);
-        } else {
-            showToast('Erro ao salvar no banco. Verifique o console.', 'error');
+        } catch (error: any) {
+            const errorMsg = error.message || JSON.stringify(error);
+            console.error("Erro capturado no componente:", error);
+            
+            // Lógica detalhada de erro para ajudar o usuário
+            if (errorMsg.includes('schema cache')) {
+                showToast("Erro de Cache do Supabase (PGRST204). Rode o comando NOTIFY pgrst no SQL e aguarde 30s.", "error");
+            } else if (errorMsg.includes('photo_urls')) {
+                showToast("Coluna 'photo_urls' faltando. Rode o Script SQL 'Ultimate Fix'.", "error");
+            } else if (errorMsg.includes('row-level security')) {
+                showToast("Erro de Permissão (RLS). O Script SQL corrige isso também.", "error");
+            } else {
+                // Erro genérico com detalhe
+                showToast(`Erro Supabase: ${errorMsg}`, "error");
+            }
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    // Componente de Renderização do Relatório Estratégico (JSON)
     const renderStrategicReport = () => {
         if (!aiReportStrategic) return null;
         
         const data = parseAIJson(aiReportStrategic);
         
-        // Se o parse falhar, mostramos o texto bruto para não esconder a informação
         if (!data) {
             return (
                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-sm text-slate-300 whitespace-pre-line animate-fadeIn">
@@ -481,7 +564,7 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                                     onChange={(e) => setFormData({...formData, fatCalculationMethod: e.target.value})}
                                     className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none"
                                 >
-                                    <option value="Bioimpedância">Bioimpedância</option>
+                                    <option value="Bioimpedância">Bioimpedância (Padrão)</option>
                                     <option value="Dobras">Dobras Cutâneas (Pollock)</option>
                                     <option value="Medidas">Medidas (Fita Métrica)</option>
                                 </select>
@@ -522,16 +605,40 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <InputGroup label="Peso (kg)" value={formData.weight} onChange={(v) => setFormData({...formData, weight: v})} />
                             
-                            {/* CAMPO GORDURA (%) */}
+                            {/* CAMPO GORDURA (%) - Lógica Condicional */}
                             {formData.fatCalculationMethod === 'Dobras' ? (
-                                <InputGroup label="Gordura (%) (Auto)" value={formData.bodyFat} onChange={() => {}} />
+                                <InputGroup 
+                                    label="Gordura (%) (Auto)" 
+                                    value={formData.bodyFat} 
+                                    onChange={() => {}} 
+                                    readOnly={true} 
+                                />
                             ) : (
-                                <InputGroup label="Gordura (%)" value={formData.bodyFatManual} onChange={(v) => setFormData({...formData, bodyFatManual: v})} />
+                                <InputGroup 
+                                    label="Gordura (%) (Manual)" 
+                                    value={formData.bodyFatManual} 
+                                    onChange={(v) => setFormData({...formData, bodyFatManual: v})} 
+                                />
                             )}
                             
-                            <InputGroup label="Músculo (%)" value={formData.muscleMass} onChange={(v) => setFormData({...formData, muscleMass: v})} />
-                            <InputGroup label="Gordura Visceral" value={formData.visceralFat} onChange={(v) => setFormData({...formData, visceralFat: v})} />
-                            <InputGroup label="Idade Metabólica" value={formData.metabolicAge} onChange={(v) => setFormData({...formData, metabolicAge: v})} />
+                            <InputGroup 
+                                label={formData.fatCalculationMethod === 'Bioimpedância' ? "Músculo (%) (Auto)" : "Músculo (%)"}
+                                value={formData.muscleMass} 
+                                onChange={(v) => setFormData({...formData, muscleMass: v})} 
+                                readOnly={formData.fatCalculationMethod === 'Bioimpedância'}
+                            />
+                            
+                            <InputGroup 
+                                label={formData.fatCalculationMethod === 'Bioimpedância' ? "Visceral (Sugerido)" : "Gordura Visceral"}
+                                value={formData.visceralFat} 
+                                onChange={(v) => setFormData({...formData, visceralFat: v})} 
+                            />
+                            
+                            <InputGroup 
+                                label={formData.fatCalculationMethod === 'Bioimpedância' ? "Id. Metabólica (Sug)" : "Idade Metabólica"}
+                                value={formData.metabolicAge} 
+                                onChange={(v) => setFormData({...formData, metabolicAge: v})} 
+                            />
                             
                             {/* Seleção de Gênero */}
                             <div>
@@ -553,14 +660,40 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                             <Ruler size={20} className="text-yellow-400" /> Perimetria (cm)
                         </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        
+                        {/* Medidas Centrais */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <InputGroup label="Peitoral" value={formData.chest} onChange={(v) => setFormData({...formData, chest: v})} />
-                            <InputGroup label="Braço (Dir)" value={formData.arms} onChange={(v) => setFormData({...formData, arms: v})} />
                             <InputGroup label="Cintura" value={formData.waist} onChange={(v) => setFormData({...formData, waist: v})} />
                             <InputGroup label="Abdômen" value={formData.abdomen} onChange={(v) => setFormData({...formData, abdomen: v})} />
                             <InputGroup label="Quadril" value={formData.hips} onChange={(v) => setFormData({...formData, hips: v})} />
-                            <InputGroup label="Coxa (Dir)" value={formData.thighs} onChange={(v) => setFormData({...formData, thighs: v})} />
-                            <InputGroup label="Panturrilha" value={formData.calves} onChange={(v) => setFormData({...formData, calves: v})} />
+                        </div>
+
+                        <hr className="border-slate-800 my-4" />
+                        
+                        {/* Medidas Bilaterais */}
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            <BilateralInputGroup 
+                                label="Braços" 
+                                valueR={formData.armRight} 
+                                valueL={formData.armLeft}
+                                onChangeR={(v) => setFormData({...formData, armRight: v})}
+                                onChangeL={(v) => setFormData({...formData, armLeft: v})}
+                            />
+                            <BilateralInputGroup 
+                                label="Coxas" 
+                                valueR={formData.thighRight} 
+                                valueL={formData.thighLeft}
+                                onChangeR={(v) => setFormData({...formData, thighRight: v})}
+                                onChangeL={(v) => setFormData({...formData, thighLeft: v})}
+                            />
+                            <BilateralInputGroup 
+                                label="Panturrilhas" 
+                                valueR={formData.calfRight} 
+                                valueL={formData.calfLeft}
+                                onChangeR={(v) => setFormData({...formData, calfRight: v})}
+                                onChangeL={(v) => setFormData({...formData, calfLeft: v})}
+                            />
                         </div>
                     </div>
 
@@ -633,6 +766,28 @@ const PtAvaliacaoCorporal: React.FC<PtAvaliacaoCorporalProps> = ({ students, tra
                 {/* COLUNA DIREITA: HISTÓRICO E PREVIEW IA */}
                 <div className="lg:col-span-1 space-y-6">
                     
+                    {/* Visualização de Fotos do Aluno */}
+                    <div className="bg-surface border border-slate-800 p-6 rounded-2xl">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                             <ImageIcon size={20} className="text-primary" /> Auto-Avaliação Visual
+                        </h3>
+
+                        {formData.photoUrls && (formData.photoUrls.front || formData.photoUrls.side || formData.photoUrls.back) ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                <MiniPhoto url={formData.photoUrls.front} label="Frente" />
+                                <MiniPhoto url={formData.photoUrls.side} label="Lado" />
+                                <div className="col-span-2">
+                                     <MiniPhoto url={formData.photoUrls.back} label="Costas" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-6 border-2 border-dashed border-slate-800 rounded-xl text-center text-slate-500">
+                                <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                                <p className="text-xs">Aluno ainda não enviou fotos para esta avaliação.</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Relatório IA */}
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl min-h-[300px] flex flex-col">
                         <div className="flex items-center justify-between mb-4">

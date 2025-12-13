@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Home, Users, PlusCircle, DollarSign, User as UserIcon, LogOut, Dumbbell, Sparkles, ClipboardList, Activity } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -10,6 +11,7 @@ import StudentDashboard from './components/StudentDashboard';
 import AIChat from './components/AIChat';
 import PtAvaliacaoCorporal from './components/PtAvaliacaoCorporal';
 import StudentAssessment from './components/StudentAssessment';
+import PaymentGate from './components/PaymentGate'; // NOVO IMPORT
 import { ViewState, WorkoutPlan, Student, User, UserRole } from './types';
 import { ToastProvider, useToast } from './components/ToastContext';
 
@@ -34,6 +36,9 @@ const AppContent = () => {
   const [activeView, setActiveView] = useState<ViewState>('DASHBOARD');
   const [previousView, setPreviousView] = useState<ViewState>('DASHBOARD');
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutPlan | null>(null);
+
+  // Helper para pegar o objeto Student completo do usuário logado
+  const currentStudentProfile = user?.role === 'STUDENT' ? students.find(s => s.id === user.studentId) : undefined;
 
   // --- CARREGAR DADOS DO SUPABASE ---
   const loadData = async () => {
@@ -210,7 +215,12 @@ const AppContent = () => {
       case 'DASHBOARD':
         return isTrainer 
           ? <Dashboard onNavigate={handleNavigate} students={students} workouts={workouts} /> 
-          : <StudentDashboard user={user} workouts={workouts} students={students} onStartWorkout={handleStartWorkout} onNavigateChat={() => handleNavigate('AI_CHAT')} />;
+          : (
+            // ENVOLVENDO AS ROTAS DO ALUNO NO PAYMENT GATE
+            <PaymentGate student={currentStudentProfile}>
+                <StudentDashboard user={user} workouts={workouts} students={students} onStartWorkout={handleStartWorkout} onNavigateChat={() => handleNavigate('AI_CHAT')} />
+            </PaymentGate>
+          );
       case 'STUDENTS':
         return isTrainer ? (
           <StudentList 
@@ -229,19 +239,28 @@ const AppContent = () => {
           />
         ) : null;
       case 'ASSESSMENTS':
-        // ROTEAMENTO INTELIGENTE DA AVALIAÇÃO
-        // Se for Personal: Vê a tela de Criação/Edição
-        // Se for Aluno: Vê a tela de "Minha Avaliação" (StudentAssessment)
         return isTrainer 
             ? <PtAvaliacaoCorporal students={students} trainerId={user.id} />
-            : <StudentAssessment user={user} />;
+            : (
+                <PaymentGate student={currentStudentProfile}>
+                    <StudentAssessment user={user} />
+                </PaymentGate>
+            );
       case 'FINANCE':
         return isTrainer ? <Finance students={students} /> : null;
       case 'WORKOUT_VIEWER':
         if (!selectedWorkout) return <div onClick={handleBack} className="p-4 text-red-500 cursor-pointer">Erro: Treino não carregado. Voltar.</div>;
-        return <WorkoutViewer workout={selectedWorkout} onBack={handleBack} />;
+        return (
+             <PaymentGate student={currentStudentProfile}>
+                <WorkoutViewer workout={selectedWorkout} onBack={handleBack} />
+             </PaymentGate>
+        );
       case 'AI_CHAT':
-        return <AIChat userName={user.name} onBack={handleBack} />;
+        return (
+            <PaymentGate student={currentStudentProfile}>
+                <AIChat userName={user.name} onBack={handleBack} />
+            </PaymentGate>
+        );
       default:
         return <Dashboard onNavigate={handleNavigate} students={students} workouts={workouts} />;
     }

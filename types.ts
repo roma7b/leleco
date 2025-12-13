@@ -1,3 +1,4 @@
+
 export enum PaymentStatus {
   PAID = 'Pago',
   LATE = 'Atrasado',
@@ -25,6 +26,15 @@ export interface Student {
   lastPaymentDate: string;
   email?: string; 
   password?: string;
+  // Novos campos financeiros
+  paymentLink?: string; // Link do Mercado Pago
+  dueDay?: number;      // Dia de vencimento (1-31)
+}
+
+export interface AssessmentPhotos {
+    front?: string;
+    side?: string;
+    back?: string;
 }
 
 export interface Assessment {
@@ -44,12 +54,22 @@ export interface Assessment {
   fatCalculationMethod?: string;
   tmbFormula?: string;
 
-  // Medidas
+  // Medidas (Atualizado para Bilaterais)
   chest?: number;
-  arms?: number;
   waist?: number;
   abdomen?: number;
   hips?: number;
+  
+  // Bilaterais
+  armRight?: number;
+  armLeft?: number;
+  thighRight?: number;
+  thighLeft?: number;
+  calfRight?: number;
+  calfLeft?: number;
+  
+  // Mantidos para compatibilidade legada se necessário, mas não usados na nova UI
+  arms?: number;
   thighs?: number;
   calves?: number;
 
@@ -61,6 +81,9 @@ export interface Assessment {
   sf_abdominal?: number;
   sf_suprailiac?: number;
   sf_thigh?: number;
+
+  // Fotos de Evolução (Novo)
+  photoUrls?: AssessmentPhotos;
 
   // IA Reports
   strategicReport?: string;

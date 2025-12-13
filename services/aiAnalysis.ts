@@ -1,18 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Removida a inicialização global que causava a tela branca/azul se a chave falhasse
-// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-const getAIClient = () => {
-  // Tenta pegar a chave de várias fontes possíveis para evitar erro
-  const apiKey = process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY || '';
-  
-  if (!apiKey) {
-    console.warn("API Key do Google Gemini não encontrada.");
-  }
-  
-  return new GoogleGenAI({ apiKey });
-};
+// Inicialização estrita conforme diretrizes de arquitetura.
+// A chave deve vir exclusivamente de process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Gera um relatório estratégico de evolução corporal em formato JSON.
@@ -22,8 +12,6 @@ const getAIClient = () => {
  */
 export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia?: any): Promise<string | null> => {
   try {
-    const ai = getAIClient();
-
     // Combina os dados da avaliação com a metodologia para o prompt
     const dadosCompletos = {
       ...dadosAvaliacao,
@@ -86,8 +74,6 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
  */
 export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<string | null> => {
   try {
-    const ai = getAIClient();
-    
     const inputData = typeof dadosAvaliacao === 'string' 
       ? dadosAvaliacao 
       : JSON.stringify(dadosAvaliacao, null, 2);

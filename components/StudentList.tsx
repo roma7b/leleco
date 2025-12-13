@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit, Lock } from 'lucide-react';
+import { Search, MoreVertical, Dumbbell, Calendar, ChevronRight, UserPlus, X, Save, Mail, CheckCircle, Clock, AlertCircle, Edit, Lock, CreditCard } from 'lucide-react';
 import { PaymentStatus, Student } from '../types';
 import { useToast } from './ToastContext';
 
@@ -23,7 +24,9 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     email: '',
     password: '',
     goal: 'Hipertrofia',
-    status: PaymentStatus.PAID
+    status: PaymentStatus.PAID,
+    paymentLink: '',
+    dueDay: 10
   });
 
   // Estado do Menu de Contexto (3 pontinhos)
@@ -62,7 +65,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
   // Abrir modal para NOVO aluno
   const handleOpenNewStudent = () => {
     setEditingStudentId(null);
-    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID, paymentLink: '', dueDay: 10 });
     setIsModalOpen(true);
   };
 
@@ -75,9 +78,11 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     setNewStudentData({
       name: student.name,
       email: student.email || '',
-      password: '', // Senha começa vazia na edição (só preenche se quiser trocar)
+      password: '', // Senha começa vazia na edição
       goal: student.goal,
-      status: student.status
+      status: student.status,
+      paymentLink: student.paymentLink || '',
+      dueDay: student.dueDay || 10
     });
     setOpenMenuId(null); // Fecha o menu
     setIsModalOpen(true);
@@ -103,7 +108,9 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
           email: newStudentData.email,
           goal: newStudentData.goal,
           status: newStudentData.status,
-          // Se o campo senha não estiver vazio, atualiza. Se estiver vazio, mantém a antiga (handled by db service)
+          paymentLink: newStudentData.paymentLink,
+          dueDay: newStudentData.dueDay,
+          // Se o campo senha não estiver vazio, atualiza. Se estiver vazio, mantém a antiga
           password: newStudentData.password ? newStudentData.password : undefined
         };
         onUpdateStudent(updatedStudent);
@@ -119,6 +126,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
         goal: newStudentData.goal,
         status: newStudentData.status,
         lastPaymentDate: new Date().toISOString(),
+        paymentLink: newStudentData.paymentLink,
+        dueDay: newStudentData.dueDay,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(newStudentData.name)}&background=random&color=fff`
       };
       onAddStudent(newStudent);
@@ -126,7 +135,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
     }
 
     setIsModalOpen(false);
-    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID });
+    setNewStudentData({ name: '', email: '', password: '', goal: 'Hipertrofia', status: PaymentStatus.PAID, paymentLink: '', dueDay: 10 });
     setEditingStudentId(null);
   };
 
@@ -227,7 +236,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                         onClick={(e) => handleOpenEditStudent(e, student)}
                         className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-white flex items-center gap-2 transition-colors border-b border-slate-800"
                       >
-                        <Edit size={16} className="text-blue-400" /> Editar / Senha
+                        <Edit size={16} className="text-blue-400" /> Editar / Financeiro
                       </button>
 
                       <div className="p-2 text-xs text-slate-500 uppercase font-bold border-b border-slate-800 bg-slate-950/50">
@@ -237,7 +246,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                         onClick={(e) => handleChangeStatus(e, student, PaymentStatus.PAID)}
                         className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-primary/10 hover:text-primary flex items-center gap-2 transition-colors"
                       >
-                        <CheckCircle size={16} /> Pago
+                        <CheckCircle size={16} /> Pago (Liberar)
                       </button>
                       <button 
                         onClick={(e) => handleChangeStatus(e, student, PaymentStatus.PENDING)}
@@ -249,7 +258,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                         onClick={(e) => handleChangeStatus(e, student, PaymentStatus.LATE)}
                         className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-500 flex items-center gap-2 transition-colors border-t border-slate-800"
                       >
-                        <AlertCircle size={16} /> Atrasado
+                        <AlertCircle size={16} /> Atrasado (Bloquear)
                       </button>
                     </div>
                   )}
@@ -272,7 +281,7 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <Calendar size={14} className="text-primary/70" />
-                    <span>Desde: <span className="text-slate-200">{new Date(student.lastPaymentDate).toLocaleDateString('pt-BR')}</span></span>
+                    <span>Vencimento dia: <span className="text-slate-200">{student.dueDay}</span></span>
                   </div>
                 </div>
               </div>
@@ -289,8 +298,8 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
       {/* MODAL DE CADASTRO / EDIÇÃO */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-surface border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
-            <div className="bg-slate-950/50 p-4 border-b border-slate-800 flex justify-between items-center">
+          <div className="bg-surface border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-slate-950/50 p-4 border-b border-slate-800 flex justify-between items-center sticky top-0 backdrop-blur-md z-10">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 {editingStudentId ? (
                    <Edit size={20} className="text-blue-400" />
@@ -376,6 +385,37 @@ const StudentList: React.FC<StudentListProps> = ({ students, onAddStudent, onSel
                     <option value={PaymentStatus.LATE}>Atrasado</option>
                   </select>
                 </div>
+              </div>
+              
+              <hr className="border-slate-800 my-2" />
+              
+              <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-primary uppercase flex items-center gap-2">
+                    <CreditCard size={14} /> Configuração Financeira
+                  </h3>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Link de Pagamento (Mercado Pago)</label>
+                    <input 
+                      type="text"
+                      value={newStudentData.paymentLink}
+                      onChange={(e) => setNewStudentData({...newStudentData, paymentLink: e.target.value})}
+                      className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none transition-colors text-xs"
+                      placeholder="https://mpago.la/..."
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Cole aqui o link de pagamento recorrente gerado no Mercado Pago.</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Dia do Vencimento</label>
+                    <input 
+                      type="number"
+                      min="1" max="31"
+                      value={newStudentData.dueDay}
+                      onChange={(e) => setNewStudentData({...newStudentData, dueDay: parseInt(e.target.value)})}
+                      className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:border-primary outline-none transition-colors"
+                    />
+                  </div>
               </div>
 
               <div className="pt-4">
