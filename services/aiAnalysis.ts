@@ -1,8 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Inicialização estrita conforme diretrizes de arquitetura.
-// A chave deve vir exclusivamente de process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Inicialização SEGURA do cliente Gemini
+// Isso evita que o app quebre ("crash") na inicialização se a chave não estiver presente no .env
+let ai: GoogleGenAI | null = null;
+
+try {
+  // O vite.config.ts mapeia env.API_KEY para process.env.API_KEY
+  const apiKey = process.env.API_KEY;
+  
+  if (apiKey && typeof apiKey === 'string' && apiKey.trim().length > 0) {
+    ai = new GoogleGenAI({ apiKey: apiKey });
+  } else {
+    console.warn("⚠️ [Leleco App] Google Gemini API Key não detectada. As funcionalidades de IA serão desativadas.");
+  }
+} catch (error) {
+  console.error("Erro fatal ao tentar inicializar o cliente GoogleGenAI:", error);
+}
 
 /**
  * Gera um relatório estratégico de evolução corporal em formato JSON.
@@ -11,6 +24,12 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @returns String JSON estruturada com a análise.
  */
 export const gerarRelatorioEstrategico = async (dadosAvaliacao: any, metodologia?: any): Promise<string | null> => {
+  // Guarda de segurança: Se a IA não iniciou, retorna erro ou null imediatamente
+  if (!ai) {
+    console.error("Tentativa de uso da IA sem chave de API configurada.");
+    throw new Error("Serviço de IA indisponível. Chave de API ausente.");
+  }
+
   try {
     // Combina os dados da avaliação com a metodologia para o prompt
     const dadosCompletos = {
@@ -73,6 +92,12 @@ Você DEVE retornar APENAS um objeto JSON válido. Não use Markdown (\`\`\`json
  * @returns String JSON estruturada.
  */
 export const gerarRelatorioMotivacional = async (dadosAvaliacao: any): Promise<string | null> => {
+  // Guarda de segurança
+  if (!ai) {
+    console.error("Tentativa de uso da IA sem chave de API configurada.");
+    throw new Error("Serviço de IA indisponível. Chave de API ausente.");
+  }
+
   try {
     const inputData = typeof dadosAvaliacao === 'string' 
       ? dadosAvaliacao 
